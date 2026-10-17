@@ -1,0 +1,92 @@
+{
+  "name": "agpro-quota",
+  "displayName": "AG Pro Quota — Antigravity Model Quota Monitor",
+  "description": "Monitor de cuota de modelos y estado en tiempo real para Antigravity IDE.",
+  "version": "0.1.0",
+  "publisher": "agpro",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [],
+    "configuration": {
+      "title": "AG Pro Quota",
+      "properties": {
+        "agPro.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 15,
+          "minimum": 5,
+          "maximum": 3600,
+          "description": "Intervalo de refresco automático en segundos (mínimo 5s)."
+        },
+        "agPro.statusBarFormat": {
+          "type": "string",
+          "default": "standard",
+          "enum": ["icon", "dot", "percent", "compact", "namePercent", "standard"],
+          "description": "Formato de la barra de estado."
+        },
+        "agPro.warningThreshold": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "maximum": 99,
+          "description": "Porcentaje bajo el cual se muestra advertencia amarilla."
+        },
+        "agPro.criticalThreshold": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 99,
+          "description": "Porcentaje bajo el cual se muestra alerta roja."
+        },
+        "agPro.language": {
+          "type": "string",
+          "default": "auto",
+          "enum": ["auto", "es", "en"],
+          "description": "Idioma de la extensión."
+        },
+        "agPro.pinnedModels": {
+          "type": "array",
+          "default": [],
+          "items": { "type": "string" },
+          "description": "Modelos fijados en la barra de estado."
+        },
+        "agPro.notificationsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mostrar notificaciones al cruzar umbrales de cuota."
+        },
+        "agPro.logLevel": {
+          "type": "string",
+          "default": "info",
+          "enum": ["debug", "info", "warn", "error"],
+          "description": "Nivel de detalle del log."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "lint": "eslint src --ext ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "node --import tsx --test test/**/*.test.ts",
+    "package": "npx -y @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "esbuild": "^0.21.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,10 @@
+.ref_*/
+node_modules/
+src/
+test/
+tsconfig.json
+esbuild.config.mjs
+.eslintrc.json
+.prettierrc
+.gitignore
+*.map
