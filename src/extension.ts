@@ -40,7 +40,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // 2. Configuración inicial
   currentConfig = readConfig();
   logger.setLevel(currentConfig.logLevel);
-  logger.info('Iniciando AG Pro Quota v1.0.0...');
+  logger.info('Iniciando AG Pro Quota v1.1.0...');
 
   // 3. Internacionalización
   const lang = resolveLanguage(currentConfig.language);

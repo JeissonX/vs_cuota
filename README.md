@@ -1,103 +1,103 @@
-# AG Pro Quota — Monitor de Cuota para Antigravity IDE
+# AG Pro Quota — Monitor de Cuota y Auditor de Tokens para Antigravity IDE
 
-Extensión de alto rendimiento para **Antigravity IDE** en Windows 11 que supervisa y presenta en tiempo real la cuota de uso de modelos de inteligencia artificial (Gemini, Claude, GPT), ventanas de tiempo (sprints de 5 horas y cuota semanal de 7 días) y estados de salud de pools compartidos.
-
----
-
-## 🚀 Características Principales
-
-- **Barra de Estado Unificada y Altamente Configurable**:
-  - 6 modos de visualización: `standard`, `compact`, `percent`, `dot`, `namePercent` e `icon`.
-  - Indicadores semafóricos visuales según umbrales de salud (🟢 normal, 🟡 advertencia, 🔴 crítico/agotado).
-  - Modo automático que enfoca el modelo más restringido, o soporte para fijar modelos específicos (`pinnedModels`).
-  - Tooltip enriquecido en Markdown con tablas de cuota, barras ASCII y accesos directos.
-
-- **Dashboard Visual por Tarjetas**:
-  - Panel Webview moderno adaptado dinámicamente al tema activo del IDE (claro u oscuro) mediante variables CSS nativas.
-  - Tarjetas agrupadas por pools de cuota compartida (`Gemini Models`, `Claude and GPT models`).
-  - Barras de progreso fluidas y cuentas regresivas precisas para el próximo reseteo.
-
-- **Vista Rápida (QuickPick Fallback)**:
-  - Selector interactivo nativo de VS Code accesible mediante comando o clic, sin necesidad de cargar un Webview pesado.
-
-- **Sistema de Notificaciones Inteligente**:
-  - Alertas automáticas al descender de umbrales críticos o cuando la cuota se agota.
-  - Mecanismo anti-spam que nunca repite avisos para el mismo modelo y nivel hasta que la cuota cambie.
-
-- **Herramienta de Diagnóstico Integrada**:
-  - Comando interactivo `AG Pro: Diagnóstico de Conexión` que examina el proceso, puertos y endpoints locales volcando el reporte al canal de salida.
-
-- **Privacidad y Seguridad Estricta**:
-  - **El token CSRF se mantiene exclusivamente en memoria volátil**. Nunca se escribe en disco, logs ni almacenamiento persistente.
-  - Conexiones restringidas de forma estricta a la interfaz loopback local (`127.0.0.1`). Ninguna información sale a redes externas.
+Extensión de alto rendimiento para **Antigravity IDE** (fork de VS Code) en Windows 11 que supervisa y presenta en tiempo real la cuota de uso de modelos de inteligencia artificial (Gemini, Claude, GPT), ventanas de tiempo (sprints de 5 horas y cuota semanal de 7 días), estados de salud de pools compartidos y **auditoría completa de consumo de tokens por petición y sesión**.
 
 ---
 
-## 📦 Instalación en Windows 11
+## 🚀 Novedades de la Versión 1.1.0
 
-### Opción A: Desde la Interfaz Gráfica de Antigravity IDE
-1. Descarga o localiza el archivo empaquetado `agpro-quota-1.0.0.vsix`.
-2. En Antigravity IDE, abre el panel de Extensiones (`Ctrl + Shift + X`).
-3. Haz clic en el menú de los tres puntos (`...`) en la esquina superior del panel de extensiones.
-4. Selecciona **"Install from VSIX..."** (Instalar desde VSIX...).
-5. Selecciona el archivo `agpro-quota-1.0.0.vsix` y confirma.
-6. La extensión se activará inmediatamente mostrando el icono en la barra de estado inferior derecha.
+- **Barra de Estado Multi-Pool y Multi-Ventana**:
+  - Muestra todos los pools simultáneamente con sus dos ventanas (ejemplo: `Gemini 93%/94% · Claude 0%/49%`).
+  - Configurable con `agPro.statusBar.showWindows` (`"both"` para ambas ventanas o `"binding"` para mostrar únicamente la ventana limitante).
+  - Filtrado selectivo de pools visibles mediante `agPro.statusBar.pools`.
+  - Color y estado semafórico determinados por la ventana más restrictiva de cada pool.
+  - Tooltip enriquecido que detalla ambas ventanas, hora exacta de reinicio, countdown, modelos asociados y aviso especial cuando el sprint de 5h se encuentra agotado (0%).
 
-### Opción B: Desde PowerShell / Terminal de Windows
-Si tienes el ejecutable de Antigravity o VS Code en el PATH:
+- **Auditoría de Tokens por Petición y Sesión Activa**:
+  - Detección automática de la sesión activa en disco (`~/.gemini/antigravity-ide/conversations/*.db`).
+  - Desglose por petición: índice del paso, modelo utilizado, tokens de salida (output), razonamiento (thought), entrada/contexto (prompt) y total de tokens.
+  - **Velocidad real de generación (tokens/segundo)** calculada exclusivamente a partir de los timestamps reales de inicio y finalización del modelo.
+  - Métrica de turnos (mensajes de usuario vs pasos del modelo) y promedio de tokens por petición.
+  - Resumen global acumulado de toda la máquina y listado de sesiones recientes.
+  - Alternancia instantánea entre formato compacto (`742.7K`) y exacto (`742,700`).
+
+- **Historial de Cuota y Tendencias Visuales (Sparklines SVG)**:
+  - Muestreo periódico de porcentajes de cuota cada ~5 minutos en `globalState` (retención máxima de 7 días).
+  - Gráficas sparkline SVG nativas generadas en tiempo real sin librerías externas ni consumo excesivo de memoria.
+
+---
+
+## 🔒 Privacidad y Seguridad Estricta (Garantía Absoluta)
+
+- **Modo Estrictamente Solo Lectura**: Las bases de datos SQLite locales de conversaciones se abren siempre con `{ readOnly: true }` y sin bloqueo de archivos (compatible con WAL mode).
+- **Cero Lectura de Conversaciones**: La extensión **NUNCA** lee, procesa, muestra, registra en logs ni almacena mensajes, texto, prompts ni contenidos de las conversaciones del usuario. Únicamente consulta columnas numéricas y metadatos de telemetría (`idx`, `step_type`, `metadata`).
+- **El token CSRF vive exclusivamente en memoria volátil**. Nunca se escribe en disco, archivos de configuración, logs ni commits de Git.
+- **Sin conexiones a redes externas**: Todas las conexiones del cliente se restringen a la interfaz loopback local (`127.0.0.1`).
+- **Degradación elegante**: Si `node:sqlite` no estuviese disponible o el formato de conversaciones cambiase, la auditoría muestra un aviso claro sin interrumpir la barra de estado ni el monitoreo de cuota.
+
+---
+
+## 📦 Instalación y Actualización en Windows 11
+
+### Desinstalación previa de la versión 1.0.0 (Recomendado al actualizar)
+Si tenías instalada la versión 1.0.0:
 ```powershell
-# Instalación directa del archivo .vsix generado
-code --install-extension agpro-quota-1.0.0.vsix
+# En PowerShell:
+code --uninstall-extension agpro.agpro-quota
+# o si usas el comando antigravity:
+antigravity --uninstall-extension agpro.agpro-quota
 ```
-*Si tu instalación utiliza el comando `antigravity`:*
+
+### Instalación de la versión 1.1.0
+
+#### Opción A: Desde PowerShell / Terminal de Windows
 ```powershell
-antigravity --install-extension agpro-quota-1.0.0.vsix
+code --install-extension agpro-quota-1.1.0.vsix --force
 ```
+*(Si usas el ejecutable específico de Antigravity IDE:)*
+```powershell
+antigravity --install-extension agpro-quota-1.1.0.vsix --force
+```
+
+#### Opción B: Desde la interfaz de Antigravity IDE
+1. Abre el panel de Extensiones (`Ctrl + Shift + X`).
+2. Haz clic en el menú superior derecho (`...`).
+3. Selecciona **"Install from VSIX..."** (Instalar desde VSIX...).
+4. Selecciona el archivo `agpro-quota-1.1.0.vsix`.
+5. Ejecuta `Ctrl + Shift + P` > **"Developer: Reload Window"** (Recargar ventana) para aplicar todos los cambios.
 
 ---
 
 ## ⚙️ Opciones de Configuración (`agPro.*`)
 
-Puedes ajustar el comportamiento desde la interfaz de Configuración (`Ctrl + ,` buscando `agPro`) o directamente en tu archivo `settings.json`:
+Configura estas opciones desde `Ctrl + ,` (buscando `agPro`) o en tu archivo `settings.json`:
 
 | Parámetro | Tipo | Por Defecto | Descripción |
 | :--- | :---: | :---: | :--- |
-| `agPro.refreshIntervalSeconds` | `number` | `15` | Intervalo de sondeo en segundos (mínimo garantizado: 5 s). |
-| `agPro.statusBarFormat` | `string` | `"standard"` | Formato visual (`standard`, `compact`, `percent`, `dot`, `namePercent`, `icon`). |
-| `agPro.warningThreshold` | `number` | `30` | Porcentaje de cuota bajo el cual se activa el estado de advertencia (amarillo). |
-| `agPro.criticalThreshold` | `number` | `10` | Porcentaje de cuota bajo el cual se activa el estado crítico (rojo). |
-| `agPro.language` | `string` | `"auto"` | Idioma de los textos (`auto`, `es`, `en`). |
-| `agPro.pinnedModels` | `array` | `[]` | Nombres o identificadores de modelos para fijar en la barra de estado. |
-| `agPro.notificationsEnabled` | `boolean` | `true` | Habilita o deshabilita los avisos emergentes al cruzar umbrales. |
-| `agPro.logLevel` | `string` | `"info"` | Nivel de detalle en el canal de salida (`debug`, `info`, `warn`, `error`). |
+| `agPro.refreshIntervalSeconds` | `number` | `15` | Intervalo de refresco periódico en segundos (mínimo 5 s). |
+| `agPro.statusBarFormat` | `string` | `"standard"` | Formato: `standard`, `namePercent`, `compact`, `percent`, `dot`, `icon`. |
+| `agPro.statusBar.showWindows` | `string` | `"both"` | `"both"` (muestra 5h y semanal, ej: 93%/94%) o `"binding"` (solo la menor). |
+| `agPro.statusBar.pools` | `array` | `[]` | Lista de pools a mostrar (vacío = muestra todos los pools disponibles). |
+| `agPro.warningThreshold` | `number` | `30` | Umbral para advertencia amarilla (porcentaje). |
+| `agPro.criticalThreshold` | `number` | `10` | Umbral para alerta crítica roja (porcentaje). |
+| `agPro.language` | `string` | `"auto"` | Idioma de la interfaz (`auto`, `es`, `en`). |
+| `agPro.pinnedModels` | `array` | `[]` | Modelos específicos para priorizar. |
+| `agPro.notificationsEnabled` | `boolean` | `true` | Avisos emergentes al cruzar umbrales. |
+| `agPro.logLevel` | `string` | `"info"` | Nivel de logging (`debug`, `info`, `warn`, `error`). |
 
 ---
 
 ## 🛠️ Comandos Disponibles (`Ctrl + Shift + P`)
 
-- **`AG Pro: Abrir Dashboard de Cuota`**: Despliega el panel visual con tarjetas y tablas.
-- **`AG Pro: Refrescar Cuota`**: Fuerza una sincronización inmediata con el servidor local.
-- **`AG Pro: Vista Rápida de Cuota`**: Abre el menú interactivo QuickPick.
-- **`AG Pro: Diagnóstico de Conexión`**: Vuelca al OutputChannel el estado de conexión, PID y puerto.
-- **`AG Pro: Cambiar Idioma (ES/EN)`**: Alterna rápidamente entre español e inglés.
-- **`AG Pro: Abrir Configuración`**: Abre los ajustes de la extensión en el editor.
-
----
-
-## 🔍 Solución de Problemas (Troubleshooting)
-
-### 1. La barra muestra "Sin conexión" o "Buscando servidor..."
-- **Causa**: El proceso de soporte `language_server_windows_x64.exe` aún no ha iniciado o está en fase de arranque.
-- **Solución**: Abre cualquier archivo o inicia una interacción en el chat para despertar el language server. Luego ejecuta `AG Pro: Refrescar Cuota`.
-
-### 2. Ejecutar el Diagnóstico
-Si experimentas anomalías en los valores:
-1. Abre la paleta de comandos (`Ctrl + Shift + P`).
-2. Escribe y ejecuta `AG Pro: Diagnóstico de Conexión`.
-3. Se abrirá automáticamente el canal de salida **"AG Pro Quota"** mostrando el PID localizado, puerto de escucha y la estructura devuelta por los endpoints locales.
+- **`AG Pro: Abrir Dashboard de Cuota`**: Panel webview completo con tarjetas, sparklines, auditoría de tokens por petición y sesiones.
+- **`AG Pro: Refrescar Cuota`**: Sincronización inmediata con el servidor y auditoría de tokens incremental.
+- **`AG Pro: Vista Rápida de Cuota`**: Menú nativo QuickPick con estado de pools, métricas de tokens y modelos.
+- **`AG Pro: Diagnóstico de Conexión`**: Reporte técnico sanitizado en OutputChannel.
+- **`AG Pro: Cambiar Idioma (ES/EN)`**: Alterna entre español e inglés al instante.
+- **`AG Pro: Abrir Configuración`**: Acceso directo a las opciones de `agPro.*`.
 
 ---
 
 ## 📄 Licencia y Atribución
 
-Este software se distribuye bajo la **Licencia MIT**. Consulta [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para detalles sobre la atribución y los proyectos de referencia que inspiraron este trabajo.
+Distribuido bajo la **Licencia MIT**. Consulta [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para más detalles.

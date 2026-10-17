@@ -10,6 +10,7 @@ Este proyecto (`agpro-quota`) se inspiró y hace referencia a patrones de diseñ
 - **Aportes y conceptos adoptados**:
   - Consulta de cuota por grupos y ventanas temporales a través del endpoint local `RetrieveUserQuotaSummary`.
   - Normalización de fracciones de cuota y tiempos de refresco (`resetTime`, `5h`, `weekly`).
+  - Referencia de ruta de almacenamiento de bases de datos de conversaciones (`tokenScanner.js`: ubicación de bases SQLite en `%USERPROFILE%/.gemini/antigravity-ide/conversations/*.db` e inspección de tabla `steps`).
 
 ### Texto de la Licencia MIT (DF-Guan/antigravity-cockpit):
 ```
