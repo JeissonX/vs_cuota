@@ -2,7 +2,7 @@
   "name": "agpro-quota",
   "displayName": "AG Pro Quota — Antigravity Model Quota Monitor",
   "description": "Monitor de cuota de modelos y estado en tiempo real para Antigravity IDE.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "agpro",
   "license": "MIT",
   "engines": {
@@ -12,7 +12,38 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [],
+    "commands": [
+      {
+        "command": "agPro.openDashboard",
+        "title": "AG Pro: Abrir Dashboard de Cuota",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "agPro.refresh",
+        "title": "AG Pro: Refrescar Cuota",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "agPro.quickOverview",
+        "title": "AG Pro: Vista Rápida de Cuota",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "agPro.diagnose",
+        "title": "AG Pro: Diagnóstico de Conexión",
+        "icon": "$(output)"
+      },
+      {
+        "command": "agPro.toggleLang",
+        "title": "AG Pro: Cambiar Idioma (ES/EN)",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "agPro.openSettings",
+        "title": "AG Pro: Abrir Configuración",
+        "icon": "$(settings-gear)"
+      }
+    ],
     "configuration": {
       "title": "AG Pro Quota",
       "properties": {
@@ -27,6 +58,14 @@
           "type": "string",
           "default": "standard",
           "enum": ["icon", "dot", "percent", "compact", "namePercent", "standard"],
+          "enumDescriptions": [
+            "Solo icono 🚀",
+            "Solo indicador de estado 🟢🟡🔴",
+            "Solo porcentaje: 65%",
+            "Indicador + porcentaje: 🟢 65%",
+            "Nombre + porcentaje: Modelo: 65%",
+            "Completo: 🟢 Modelo: 65% (por defecto)"
+          ],
           "description": "Formato de la barra de estado."
         },
         "agPro.warningThreshold": {
