@@ -115,7 +115,7 @@
     "lint": "eslint src --ext ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "node --import tsx --test test/**/*.test.ts",
-    "package": "npx -y @vscode/vsce package --no-dependencies"
+    "package": "npx -y @vscode/vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

@@ -1,4 +1,7 @@
 .ref_*/
+.draft_src/
+scripts/
+docs/samples/
 node_modules/
 src/
 test/
