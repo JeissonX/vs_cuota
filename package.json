@@ -41,7 +41,12 @@
       {
         "command": "agPro.openSettings",
         "title": "AG Pro: Abrir Configuración",
-        "icon": "$(settings-gear)"
+        "icon": "$(gear)"
+      },
+      {
+        "command": "agPro.togglePoolView",
+        "title": "AG Pro: Cambiar Vista de Pools (Ambos / Gemini / Claude)",
+        "icon": "$(eye)"
       }
     ],
     "configuration": {
@@ -83,6 +88,17 @@
           "default": [],
           "items": { "type": "string" },
           "description": "Lista de pools a mostrar en la barra de estado (vacío para mostrar todos los pools disponibles)."
+        },
+        "agPro.statusBar.poolView": {
+          "type": "string",
+          "default": "all",
+          "enum": ["all", "gemini", "claude"],
+          "enumDescriptions": [
+            "Mostrar ambos pools: Gemini y Claude",
+            "Mostrar únicamente el pool Gemini",
+            "Mostrar únicamente el pool Claude / GPT"
+          ],
+          "description": "Filtro de visualización de pools en la barra de estado."
         },
         "agPro.warningThreshold": {
           "type": "number",

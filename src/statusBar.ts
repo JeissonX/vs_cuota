@@ -13,7 +13,7 @@
 import * as vscode from 'vscode';
 import type { QuotaSnapshot, AgProConfig, QuotaGroup } from './types';
 import { QuotaLevel } from './types';
-import { t } from './i18n';
+import { t, getLanguage } from './i18n';
 import {
   getQuotaLevel,
   get5hBucket,
@@ -74,7 +74,12 @@ export class StatusBarManager {
 
     // Formatear texto visible
     const text = formatStatusBarPoolsText(groupsToDisplay, config);
-    this.item.text = text || '$(rocket) AG Pro';
+    if (!text) {
+      this.item.text = '$(rocket) AG Pro';
+    } else {
+      const prefix = text.startsWith('$') || text.startsWith('🚀') ? '' : '$(rocket) ';
+      this.item.text = `${prefix}${text}`;
+    }
     this.item.tooltip = this.buildTooltip(snapshot, config);
   }
 
@@ -87,11 +92,34 @@ export class StatusBarManager {
   }
 
   /**
-   * Filtra los grupos según la configuración statusBar.pools.
+   * Filtra los grupos según statusBar.poolView y statusBar.pools.
    */
   private resolveGroups(groups: QuotaGroup[], config: AgProConfig): QuotaGroup[] {
+    const result = groups;
+
+    if (config.statusBarPoolView && config.statusBarPoolView !== 'all') {
+      if (config.statusBarPoolView === 'gemini') {
+        const geminiGroups = result.filter(
+          (g) =>
+            g.displayName.toLowerCase().includes('gemini') ||
+            g.displayName.toLowerCase().includes('argon') ||
+            g.groupId.toLowerCase().includes('gemini'),
+        );
+        if (geminiGroups.length > 0) return geminiGroups;
+      } else if (config.statusBarPoolView === 'claude') {
+        const claudeGroups = result.filter(
+          (g) =>
+            g.displayName.toLowerCase().includes('claude') ||
+            g.displayName.toLowerCase().includes('gpt') ||
+            g.groupId.toLowerCase().includes('claude') ||
+            g.groupId.toLowerCase().includes('3p'),
+        );
+        if (claudeGroups.length > 0) return claudeGroups;
+      }
+    }
+
     if (config.statusBarPools && config.statusBarPools.length > 0) {
-      const filtered = groups.filter((g) =>
+      const filtered = result.filter((g) =>
         config.statusBarPools.some(
           (p) =>
             p.toLowerCase() === g.groupId.toLowerCase() ||
@@ -101,109 +129,77 @@ export class StatusBarManager {
       );
       if (filtered.length > 0) return filtered;
     }
-    return groups;
+    return result;
   }
 
   /**
-   * Construye el tooltip interactivo detallado con ambas ventanas, horas de reinicio,
-   * aviso de 0% de 5h y modelos del pool.
+   * Construye el tooltip Markdown minimalista, compacto y estructurado.
    */
-  private buildTooltip(snapshot: QuotaSnapshot, config: AgProConfig): vscode.MarkdownString {
+  private buildTooltip(snapshot: QuotaSnapshot, _config: AgProConfig): vscode.MarkdownString {
     const md = new vscode.MarkdownString();
     md.isTrusted = true;
     md.supportHtml = true;
+    md.supportThemeIcons = true;
 
-    const timeStr = snapshot.timestamp.toLocaleTimeString();
-    const statusIcon = snapshot.isConnected ? '🟢' : '🔴';
+    const isEs = getLanguage() === 'es';
+    const timeStr = snapshot.timestamp.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
 
-    md.appendMarkdown(`**$(rocket) ${t('dashboard.title')}**\n\n`);
-    md.appendMarkdown(`*${t('dashboard.lastSync')}: ${timeStr} • ${statusIcon}*\n\n`);
-    md.appendMarkdown('---\n\n');
+    md.appendMarkdown(`### 🚀 AG Pro — ${isEs ? 'Cuota de Modelos' : 'Model Quota'}\n`);
+    md.appendMarkdown(`*${isEs ? 'Sincronizado' : 'Synced'}: ${timeStr}*\n\n`);
 
     for (const group of snapshot.groups) {
-      const shortName = formatPoolShortName(group.displayName);
-      const dot = this.statusDot(group.lowestPercent, config);
+      const lower = group.displayName.toLowerCase();
+      let poolHeader = group.displayName;
+      if (lower.includes('gemini')) {
+        poolHeader = 'Gemini (Flash)';
+      } else if (lower.includes('claude') || lower.includes('gpt')) {
+        poolHeader = 'Claude & GPT';
+      }
 
-      md.appendMarkdown(`### ${dot} **${group.displayName}** (${shortName})\n\n`);
+      md.appendMarkdown(`**${poolHeader}**\n`);
 
       const b5h = get5hBucket(group);
       const bWeekly = getWeeklyBucket(group);
       const binding = getBindingBucket(group);
 
-      // Si el pool está en 0% en la ventana de 5h, avisar expresamente cuándo se libera
-      if (b5h && b5h.remainingPercent <= 0) {
-        const resetAt = b5h.resetTime ? b5h.resetTime.toLocaleTimeString() : '-';
-        md.appendMarkdown(
-          `> ⚠️ **${t('statusBar.fiveHourExhausted', { time: resetAt, countdown: b5h.resetCountdown || 'en breve' })}**\n\n`,
-        );
-      }
-
-      // Detalle de ambas ventanas
       if (b5h) {
         const isBinding = binding?.window === b5h.window;
-        const bDot = this.statusDot(b5h.remainingPercent, config);
-        const bar = this.progressBar(b5h.remainingPercent);
-        const resetAt = b5h.resetTime ? `(${b5h.resetTime.toLocaleTimeString()})` : '';
-        const tag = isBinding ? ` *[${t('statusBar.bindingNotice')}]*` : '';
-        md.appendMarkdown(
-          `- ${bDot} **${t('dashboard.fiveHour')}**: **${b5h.remainingPercent}%** \`${bar}\` → ${b5h.resetCountdown || '-'} ${resetAt}${tag}\n`,
-        );
+        const bindingTag = isBinding ? ` *(${isEs ? 'limitante' : 'binding'})*` : '';
+        const resetText =
+          b5h.remainingPercent >= 100
+            ? isEs
+              ? 'liberado'
+              : 'full'
+            : `${isEs ? 'reinicia en' : 'resets in'} ${b5h.resetCountdown || '-'}`;
+        md.appendMarkdown(`• 5h (Sprint): **${b5h.remainingPercent}%**${bindingTag} — ${resetText}\n`);
       }
 
       if (bWeekly) {
         const isBinding = binding?.window === bWeekly.window;
-        const bDot = this.statusDot(bWeekly.remainingPercent, config);
-        const bar = this.progressBar(bWeekly.remainingPercent);
-        const resetAt = bWeekly.resetTime
-          ? `(${bWeekly.resetTime.toLocaleDateString()} ${bWeekly.resetTime.toLocaleTimeString()})`
-          : '';
-        const tag = isBinding ? ` *[${t('statusBar.bindingNotice')}]*` : '';
+        const bindingTag = isBinding ? ` *(${isEs ? 'limitante' : 'binding'})*` : '';
+        const resetText =
+          bWeekly.remainingPercent >= 100
+            ? isEs
+              ? 'liberado'
+              : 'full'
+            : `${isEs ? 'reinicia en' : 'resets in'} ${bWeekly.resetCountdown || '-'}`;
         md.appendMarkdown(
-          `- ${bDot} **${t('dashboard.weekly')}**: **${bWeekly.remainingPercent}%** \`${bar}\` → ${bWeekly.resetCountdown || '-'} ${resetAt}${tag}\n`,
+          `• ${isEs ? 'Semanal' : 'Weekly'}: **${bWeekly.remainingPercent}%**${bindingTag} — ${resetText}\n`,
         );
       }
 
-      // Modelos del pool
-      const poolModels = snapshot.models.filter(
-        (m) =>
-          m.poolName.toLowerCase() === group.displayName.toLowerCase() ||
-          group.displayName.toLowerCase().includes(m.poolName.toLowerCase()),
-      );
-      if (poolModels.length > 0) {
-        const modelNames = poolModels.map((m) => m.label).join(', ');
-        md.appendMarkdown(`\n*${t('statusBar.poolModels')}: ${modelNames}*\n\n`);
-      } else {
-        md.appendMarkdown('\n');
-      }
-
-      md.appendMarkdown('---\n\n');
+      md.appendMarkdown('\n');
     }
 
+    md.appendMarkdown('---\n');
     md.appendMarkdown(
-      `[$(refresh) ${t('dashboard.refresh')}](command:agPro.refresh) | [$(dashboard) Dashboard](command:agPro.openDashboard) | [$(settings-gear) ${t('dashboard.settings')}](command:agPro.openSettings)`,
+      `[🔄 ${t('dashboard.refresh')}](command:agPro.refresh) | [📊 Dashboard](command:agPro.openDashboard) | [⚙️ ${t('dashboard.settings')}](command:agPro.openSettings)\n`,
     );
 
     return md;
-  }
-
-  private statusDot(percent: number, config: AgProConfig): string {
-    const level = getQuotaLevel(percent, config.warningThreshold, config.criticalThreshold);
-    switch (level) {
-      case QuotaLevel.Depleted:
-      case QuotaLevel.Critical:
-        return '🔴';
-      case QuotaLevel.Warning:
-        return '🟡';
-      case QuotaLevel.Normal:
-      default:
-        return '🟢';
-    }
-  }
-
-  private progressBar(percent: number): string {
-    const total = 10;
-    const filled = Math.max(0, Math.min(total, Math.round((percent / 100) * total)));
-    return '■'.repeat(filled) + '□'.repeat(total - filled);
   }
 
   dispose(): void {

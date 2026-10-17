@@ -35,6 +35,7 @@ export const en = {
   'quickPick.title': 'Model Quota',
   'quickPick.noModels': 'No models found',
   'quickPick.openDashboard': 'Open Dashboard',
+  'quickPick.togglePoolView': 'Toggle pool view',
   'error.processNotFound': 'Antigravity process not found. Is the IDE running?',
   'error.connectionFailed': 'Could not connect to Antigravity server',
   'error.timeout': 'Request timed out',
@@ -67,4 +68,7 @@ export const en = {
   'tokens.prompt': 'Input (Context)',
   'dashboard.bindingBadge': 'Binding',
   'dashboard.models': 'Models',
+  'dashboard.filterAll': 'All',
+  'dashboard.filterGemini': 'Gemini / Flash only',
+  'dashboard.filterClaude': 'Claude / GPT only',
 } as const;

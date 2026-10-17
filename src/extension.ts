@@ -22,7 +22,7 @@ import { showQuickOverview } from './quickPick';
 import { discoverServer } from './discovery';
 import { QuotaHistoryManager } from './historyManager';
 import { auditTokens, type TokenAuditSnapshot } from './phase2/tokenAuditor';
-import type { QuotaSnapshot, AgProConfig } from './types';
+import type { QuotaSnapshot, AgProConfig, StatusBarPoolView } from './types';
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let statusBar: StatusBarManager | null = null;
@@ -118,6 +118,43 @@ export function activate(context: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand('agPro.openSettings', () => {
       vscode.commands.executeCommand('workbench.action.openSettings', 'agPro');
+    }),
+
+    vscode.commands.registerCommand('agPro.togglePoolView', async () => {
+      const current = currentConfig.statusBarPoolView || 'all';
+      const isEs = getLanguage() === 'es';
+      const items: { label: string; description: string; value: StatusBarPoolView }[] = [
+        {
+          label: `${current === 'all' ? '$(check) ' : ''}${isEs ? 'Ambos (Gemini & Claude)' : 'Both (Gemini & Claude)'}`,
+          description: isEs ? 'Muestra ambos pools en la barra inferior' : 'Show both pools in status bar',
+          value: 'all',
+        },
+        {
+          label: `${current === 'gemini' ? '$(check) ' : ''}${isEs ? 'Solo Gemini' : 'Gemini Only'}`,
+          description: isEs ? 'Muestra únicamente la cuota de Gemini' : 'Show Gemini pool quota only',
+          value: 'gemini',
+        },
+        {
+          label: `${current === 'claude' ? '$(check) ' : ''}${isEs ? 'Solo Claude / GPT' : 'Claude / GPT Only'}`,
+          description: isEs ? 'Muestra únicamente la cuota de Claude & GPT' : 'Show Claude & GPT pool quota only',
+          value: 'claude',
+        },
+      ];
+
+      const pick = await vscode.window.showQuickPick(items, {
+        title: isEs ? 'AG Pro: Vista de Pools en Barra de Estado' : 'AG Pro: Status Bar Pool View',
+        placeHolder: isEs ? 'Selecciona qué pools mostrar' : 'Select pools to display',
+      });
+
+      if (pick) {
+        await vscode.workspace
+          .getConfiguration('agPro')
+          .update('statusBar.poolView', pick.value, vscode.ConfigurationTarget.Global);
+        currentConfig = readConfig();
+        if (lastSnapshot) {
+          statusBar?.update(lastSnapshot, currentConfig);
+        }
+      }
     }),
 
     vscode.commands.registerCommand('agPro.diagnose', async () => {

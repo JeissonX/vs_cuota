@@ -216,8 +216,19 @@ function buildHtml(
         })
         .join('');
 
+      const lowerName = group.displayName.toLowerCase();
+      const poolCategory =
+        lowerName.includes('gemini') || lowerName.includes('argon') || lowerName.includes('flash')
+          ? 'gemini'
+          : lowerName.includes('claude') ||
+              lowerName.includes('gpt') ||
+              lowerName.includes('sonnet') ||
+              lowerName.includes('opus')
+            ? 'claude'
+            : 'other';
+
       return `
-        <div class="card pool-card">
+        <div class="card pool-card" data-pool="${poolCategory}">
           <div class="card-title-row">
             <span class="card-title">${group.displayName}</span>
           </div>
@@ -456,10 +467,70 @@ function buildHtml(
     .header-btn:hover { border-color: var(--accent); }
     .header-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .cards-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .filter-pills {
+      display: inline-flex;
+      background: rgba(128, 128, 128, 0.08);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 3px;
+      gap: 4px;
+    }
+    .filter-pill {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      padding: 5px 14px;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 0.82em;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .filter-pill:hover {
+      color: var(--fg);
+      background: rgba(128, 128, 128, 0.15);
+    }
+    .filter-pill.active {
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(55, 148, 255, 0.35);
+    }
+
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 28px; }
     .card {
       background: var(--card-bg); border: 1px solid var(--card-border);
       border-radius: 8px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      animation: fadeInUp 0.25s ease-out;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+      border-color: rgba(55, 148, 255, 0.4);
+    }
+    .pool-card.is-hidden {
+      display: none !important;
     }
     .card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .card-title { font-weight: 600; font-size: 1.15em; }
@@ -495,7 +566,7 @@ function buildHtml(
       height: 8px; border-radius: 4px;
       background: rgba(128, 128, 128, 0.2); overflow: hidden;
     }
-    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
     .bucket-meta { font-size: 0.8em; color: var(--muted); margin-top: 6px; display: flex; justify-content: space-between; }
     .exhausted-alert {
       margin-top: 8px; padding: 6px 10px; border-radius: 4px;
@@ -538,7 +609,7 @@ function buildHtml(
       height: 6px; width: 100%; border-radius: 3px;
       background: rgba(128, 128, 128, 0.2); overflow: hidden;
     }
-    .req-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.3s; }
+    .req-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
     .bar-cell { min-width: 90px; }
 
     .active-session-row { background: rgba(55, 148, 255, 0.05); }
@@ -573,6 +644,20 @@ function buildHtml(
     </div>
   </div>
 
+  <div class="cards-header">
+    <div class="filter-pills" id="poolFilterPills">
+      <button class="filter-pill active" data-filter="all" onclick="setPoolFilter('all')">
+        ${t('dashboard.filterAll')}
+      </button>
+      <button class="filter-pill" data-filter="gemini" onclick="setPoolFilter('gemini')">
+        ${t('dashboard.filterGemini')}
+      </button>
+      <button class="filter-pill" data-filter="claude" onclick="setPoolFilter('claude')">
+        ${t('dashboard.filterClaude')}
+      </button>
+    </div>
+  </div>
+
   <div class="cards">${groupCards}</div>
 
   ${sessionTokensHtml}
@@ -582,6 +667,39 @@ function buildHtml(
   <script>
     const vscode = acquireVsCodeApi();
     function sendMsg(command) { vscode.postMessage({ command }); }
+
+    function setPoolFilter(filter) {
+      try {
+        sessionStorage.setItem('agpro_selected_pool_filter', filter);
+        localStorage.setItem('agpro_selected_pool_filter', filter);
+      } catch (e) {}
+
+      const pills = document.querySelectorAll('.filter-pill');
+      pills.forEach(pill => {
+        pill.classList.toggle('active', pill.getAttribute('data-filter') === filter);
+      });
+
+      const cards = document.querySelectorAll('.pool-card');
+      cards.forEach(card => {
+        const pool = card.getAttribute('data-pool');
+        if (filter === 'all' || pool === filter) {
+          card.classList.remove('is-hidden');
+        } else {
+          card.classList.add('is-hidden');
+        }
+      });
+    }
+
+    (function initFilter() {
+      try {
+        const saved = sessionStorage.getItem('agpro_selected_pool_filter') ||
+                      localStorage.getItem('agpro_selected_pool_filter') ||
+                      'all';
+        setPoolFilter(saved);
+      } catch (e) {
+        setPoolFilter('all');
+      }
+    })();
 
     let isExact = false;
     function toggleFormat() {

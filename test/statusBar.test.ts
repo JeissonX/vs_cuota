@@ -64,6 +64,7 @@ describe('HITO A: Barra de Estado Completa y Ventana Limitante', () => {
     statusBarFormat: 'standard',
     statusBarShowWindows: 'both',
     statusBarPools: [],
+    statusBarPoolView: 'all',
     warningThreshold: 30,
     criticalThreshold: 10,
     language: 'es',
@@ -142,5 +143,19 @@ describe('HITO A: Barra de Estado Completa y Ventana Limitante', () => {
   test('formatPoolShortName simplifica nombres para barra de estado', () => {
     assert.strictEqual(formatPoolShortName('Gemini Models'), 'Gemini');
     assert.strictEqual(formatPoolShortName('Claude and GPT models'), 'Claude');
+  });
+
+  test('statusBarPoolView formatea con dos puntos cuando se filtra un solo pool', () => {
+    const geminiText = formatStatusBarPoolsText([sampleGroups[0]], {
+      ...baseConfig,
+      statusBarPoolView: 'gemini',
+    });
+    assert.strictEqual(geminiText, 'Gemini: 96%/94%');
+
+    const claudeText = formatStatusBarPoolsText([sampleGroups[1]], {
+      ...baseConfig,
+      statusBarPoolView: 'claude',
+    });
+    assert.strictEqual(claudeText, 'Claude: 0%/49%');
   });
 });

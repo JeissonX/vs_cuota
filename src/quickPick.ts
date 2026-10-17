@@ -108,6 +108,10 @@ export async function showQuickOverview(
     label: `$(refresh) ${t('dashboard.refresh')}`,
     alwaysShow: true,
   });
+  items.push({
+    label: `$(eye) ${t('quickPick.togglePoolView')}`,
+    alwaysShow: true,
+  });
 
   const selection = await vscode.window.showQuickPick(items, {
     title: t('quickPick.title'),
@@ -120,6 +124,8 @@ export async function showQuickOverview(
     await vscode.commands.executeCommand('agPro.openDashboard');
   } else if (selection.label.includes(t('dashboard.refresh'))) {
     await vscode.commands.executeCommand('agPro.refresh');
+  } else if (selection.label.includes(t('quickPick.togglePoolView'))) {
+    await vscode.commands.executeCommand('agPro.togglePoolView');
   }
 }
 

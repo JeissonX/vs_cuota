@@ -55,11 +55,19 @@ export function formatStatusBarPoolsText(groups: QuotaGroup[], config: AgProConf
         parts.push(`${dot} ${valStr}`);
         break;
       case 'namePercent':
-        parts.push(`${shortName} ${valStr}`);
+        parts.push(
+          config.statusBarPoolView && config.statusBarPoolView !== 'all'
+            ? `${shortName}: ${valStr}`
+            : `${shortName} ${valStr}`,
+        );
         break;
       case 'standard':
       default:
-        parts.push(`${dot} ${shortName} ${valStr}`);
+        parts.push(
+          config.statusBarPoolView && config.statusBarPoolView !== 'all'
+            ? `${shortName}: ${valStr}`
+            : `${dot} ${shortName} ${valStr}`,
+        );
         break;
     }
   }

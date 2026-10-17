@@ -35,6 +35,10 @@ export function readConfig(): AgProConfig {
 
   const statusBarPools = cfg.get<string[]>('statusBar.pools', []);
 
+  const rawPoolView = cfg.get<string>('statusBar.poolView', 'all');
+  const statusBarPoolView =
+    rawPoolView === 'gemini' || rawPoolView === 'claude' ? rawPoolView : 'all';
+
   const rawLogLevel = cfg.get<string>('logLevel', 'info');
   const logLevel = VALID_LOG_LEVELS.includes(rawLogLevel as (typeof VALID_LOG_LEVELS)[number])
     ? (rawLogLevel as AgProConfig['logLevel'])
@@ -53,6 +57,7 @@ export function readConfig(): AgProConfig {
     statusBarFormat: format,
     statusBarShowWindows,
     statusBarPools,
+    statusBarPoolView,
     warningThreshold: Math.min(99, Math.max(1, warningRaw)),
     criticalThreshold: Math.min(99, Math.max(1, criticalRaw)),
     language,

@@ -68,12 +68,16 @@ export type StatusBarFormat = 'icon' | 'dot' | 'percent' | 'compact' | 'namePerc
 /** Modo de visualización de ventanas en la barra de estado */
 export type StatusBarWindowsMode = 'both' | 'binding';
 
+/** Modo de selección de pools en la barra de estado */
+export type StatusBarPoolView = 'all' | 'gemini' | 'claude';
+
 /** Configuración leída de agPro.* */
 export interface AgProConfig {
   refreshIntervalSeconds: number;
   statusBarFormat: StatusBarFormat;
   statusBarShowWindows: StatusBarWindowsMode;
   statusBarPools: string[];
+  statusBarPoolView: StatusBarPoolView;
   warningThreshold: number;
   criticalThreshold: number;
   language: 'auto' | 'es' | 'en';
