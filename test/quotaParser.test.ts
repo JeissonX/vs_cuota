@@ -7,6 +7,7 @@ import {
   clampFraction,
   formatCountdown,
   inferPoolName,
+  toCalibrationSnapshot,
 } from '../src/quotaParser';
 import type { RawQuotaSummaryResponse, RawUserStatusResponse } from '../src/types';
 
@@ -75,4 +76,21 @@ describe('quotaParser con muestras reales de docs/samples/', () => {
     const countdown = formatCountdown(desc, null);
     assert.strictEqual(countdown, '6 days, 17 hours');
   });
+
+  test('toCalibrationSnapshot mapea RetrieveUserQuotaSummary a CalibrationQuotaSnapshot', () => {
+    const snap = toCalibrationSnapshot(rawQuota, 1700000000000);
+    assert.ok(snap, 'Debe producir snapshot');
+    assert.strictEqual(snap.takenAt, 1700000000000);
+
+    // Pools gemini y claude
+    assert.ok(snap.pools.gemini['5h']);
+    assert.ok(snap.pools.gemini['weekly']);
+    assert.strictEqual(snap.pools.gemini['5h']?.remainingFraction, 0.95980984);
+    assert.strictEqual(snap.pools.gemini['weekly']?.remainingFraction, 0.944796);
+    assert.ok(snap.pools.gemini['5h']!.resetAtMs > 0);
+
+    assert.ok(snap.pools.claude['5h']);
+    assert.strictEqual(snap.pools.claude['5h']?.remainingFraction, 0);
+  });
 });
+

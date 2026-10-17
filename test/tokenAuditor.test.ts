@@ -131,7 +131,7 @@ describe('HITO C: Auditor de Tokens con Fixtures Sintéticos (node:sqlite)', () 
     assert.strictEqual(req.durationSeconds, 10);
     // 200 tokens / 10s = 20 t/s
     assert.strictEqual(req.outputSpeedTokensPerSec, 20);
-    assert.strictEqual(req.cacheTokens, null); // Sin invención
+    assert.strictEqual(req.cacheTokens, 0); // Decodificado por protoWire v1.2.0
   });
 
   test('auditTokens lee de forma incremental cuando se añaden nuevos pasos', async () => {

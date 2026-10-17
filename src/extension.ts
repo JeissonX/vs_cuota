@@ -10,6 +10,7 @@
  */
 
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { readConfig } from './config';
 import { logger } from './logger';
 import { resolveLanguage, setLanguage, t, getLanguage } from './i18n';
@@ -21,7 +22,8 @@ import { showDashboard, updateDashboardIfOpen, DashboardViewProvider } from './d
 import { showQuickOverview } from './quickPick';
 import { discoverServer } from './discovery';
 import { QuotaHistoryManager } from './historyManager';
-import { auditTokens, type TokenAuditSnapshot } from './phase2/tokenAuditor';
+import { auditTokens, startConversationWatcher, type TokenAuditSnapshot } from './phase2/tokenAuditor';
+import { CalibrationManager } from './phase2/calibrationManager';
 import type { QuotaSnapshot, AgProConfig, StatusBarPoolView } from './types';
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -29,6 +31,7 @@ let statusBar: StatusBarManager | null = null;
 let lastSnapshot: QuotaSnapshot | null = null;
 let lastTokenSnapshot: TokenAuditSnapshot | null = null;
 let historyManager: QuotaHistoryManager | null = null;
+let calibrationManager: CalibrationManager | null = null;
 let currentConfig: AgProConfig;
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -40,16 +43,30 @@ export function activate(context: vscode.ExtensionContext): void {
   // 2. Configuración inicial
   currentConfig = readConfig();
   logger.setLevel(currentConfig.logLevel);
-  logger.info('Iniciando AG Pro Quota v1.1.0...');
+  logger.info('Iniciando AG Pro Quota v1.2.0...');
 
   // 3. Internacionalización
   const lang = resolveLanguage(currentConfig.language);
   setLanguage(lang);
   logger.info(`Idioma activo: ${lang}`);
 
-  // 4. Barra de estado e Historial
+  // 4. Barra de estado, Historial y Calibración
   statusBar = new StatusBarManager(context);
   historyManager = new QuotaHistoryManager(context.globalState);
+  calibrationManager = new CalibrationManager();
+
+  // Watcher de cambios en archivos de conversaciones (con debounce de 1.5s y pausa si ventana sin foco)
+  const convDir = path.join(
+    process.env.USERPROFILE || process.env.HOME || '',
+    '.gemini',
+    'antigravity-ide',
+    'conversations',
+  );
+  const watcher = startConversationWatcher(convDir, () => {
+    logger.info('Cambio detectado en bases de conversaciones, refrescando datos...');
+    triggerRefresh();
+  });
+  context.subscriptions.push(watcher);
 
   // 5. Registro de comandos
   context.subscriptions.push(
@@ -61,6 +78,7 @@ export function activate(context: vscode.ExtensionContext): void {
           lastTokenSnapshot,
           currentConfig,
           historyManager,
+          calibrationManager,
           () => triggerRefresh(),
         );
       } else {
@@ -73,6 +91,7 @@ export function activate(context: vscode.ExtensionContext): void {
               lastTokenSnapshot,
               currentConfig,
               historyManager,
+              calibrationManager,
               () => triggerRefresh(),
             );
           }
@@ -111,8 +130,8 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.workspace.getConfiguration('agPro').update('language', nextLang, vscode.ConfigurationTarget.Global);
       vscode.window.showInformationMessage(t('lang.switched'));
       if (lastSnapshot) {
-        statusBar?.update(lastSnapshot, currentConfig);
-        updateDashboardIfOpen(lastSnapshot, lastTokenSnapshot, currentConfig, historyManager);
+        statusBar?.update(lastSnapshot, currentConfig, calibrationManager || undefined);
+        updateDashboardIfOpen(lastSnapshot, lastTokenSnapshot, currentConfig, historyManager, calibrationManager);
       }
     }),
 
@@ -189,8 +208,8 @@ export function activate(context: vscode.ExtensionContext): void {
         }
 
         if (lastSnapshot) {
-          statusBar?.update(lastSnapshot, currentConfig);
-          updateDashboardIfOpen(lastSnapshot, lastTokenSnapshot, currentConfig, historyManager);
+          statusBar?.update(lastSnapshot, currentConfig, calibrationManager || undefined);
+          updateDashboardIfOpen(lastSnapshot, lastTokenSnapshot, currentConfig, historyManager, calibrationManager);
         }
       }
     }),
@@ -230,14 +249,22 @@ async function triggerRefresh(): Promise<void> {
       }),
     ]);
 
+    if (quotaRaw) {
+      calibrationManager?.recordQuotaRaw(quotaRaw);
+    }
+    if (tokenSnapshot?.collectedStepUsages && tokenSnapshot.collectedStepUsages.length > 0) {
+      calibrationManager?.recordStepUsages(tokenSnapshot.collectedStepUsages);
+      calibrationManager?.recalculate();
+    }
+
     const snapshot = buildSnapshot(quotaRaw, userStatusRaw, latencyMs);
     lastSnapshot = snapshot;
     lastTokenSnapshot = tokenSnapshot;
 
     historyManager?.recordSnapshot(snapshot);
-    statusBar?.update(snapshot, currentConfig);
+    statusBar?.update(snapshot, currentConfig, calibrationManager || undefined);
     checkAndNotify(snapshot, currentConfig);
-    updateDashboardIfOpen(snapshot, lastTokenSnapshot, currentConfig, historyManager);
+    updateDashboardIfOpen(snapshot, lastTokenSnapshot, currentConfig, historyManager, calibrationManager);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error(`Error en ciclo de refresco: ${msg}`);

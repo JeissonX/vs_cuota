@@ -134,3 +134,82 @@ export interface RawClientModelConfig {
     resetTime?: string;
   };
 }
+
+// ============================================================================
+// Tipos de Calibración y Protobuf (v1.2.0)
+// ============================================================================
+
+export type PoolId = 'gemini' | 'claude';
+export type WindowId = '5h' | 'weekly';
+export const POOLS: readonly PoolId[] = ['gemini', 'claude'];
+
+/** Columnas que se leen de `steps`. `content` NUNCA se selecciona. */
+export interface StepRowMeta {
+  readonly id: number;
+  readonly conversationId: string;
+  readonly stepIndex: number;
+  readonly stepType: number; // 14 = turno usuario, 15 = inferencia
+  readonly status: number; // 3 = completado en Antigravity IDE (o 2)
+  readonly createdAt: number; // epoch ms UTC
+  readonly updatedAt: number; // epoch ms UTC
+  readonly metadata: Uint8Array | null;
+}
+
+/**
+ * Query de lectura segura. En Antigravity IDE la columna PK es idx.
+ */
+export const STEP_QUERY =
+  'SELECT idx, step_type, status, metadata FROM steps WHERE idx > ? AND step_type = 15 ORDER BY idx ASC';
+
+export const FEATURES = ['inputNoCache', 'cacheRead', 'output', 'thoughts'] as const;
+export type Feature = (typeof FEATURES)[number];
+export type FeatureVector = Readonly<Record<Feature, number>>;
+
+/** Contadores decodificados del campo 9 del protobuf. */
+export interface TokenUsage {
+  readonly input: number; // total, incluye caché
+  readonly inputNoCache: number; // max(0, input - cacheRead)
+  readonly cacheRead: number;
+  readonly output: number;
+  readonly thoughts: number;
+}
+
+/** Paso ya decodificado y con el instante de referencia elegido. */
+export interface StepUsage {
+  readonly id: number;
+  readonly conversationId: string;
+  readonly ts: number; // epoch ms (createdAt o updatedAt según config)
+  readonly usage: TokenUsage;
+}
+
+export interface WindowReading {
+  readonly remainingFraction: number; // 0..1
+  readonly resetAtMs: number; // epoch ms (parseado de resetTime ISO)
+}
+
+/** Snapshot para calibración matemática (delta de cuota entre polls) */
+export interface CalibrationQuotaSnapshot {
+  readonly takenAt: number; // epoch ms local, momento del poll
+  readonly pools: Readonly<Record<PoolId, Partial<Record<WindowId, WindowReading>>>>;
+}
+
+export interface CalibrationSample {
+  readonly pool: PoolId;
+  readonly window: WindowId;
+  readonly t0: number;
+  readonly t1: number;
+  readonly deltaPct: number; // puntos porcentuales consumidos (>0)
+  readonly x: FeatureVector; // tokens sumados en la ventana alineada
+  readonly stepCount: number;
+}
+
+export interface CalibrationFit {
+  readonly pool: PoolId;
+  readonly window: WindowId;
+  readonly n: number;
+  readonly coefPctPerToken: FeatureVector;
+  readonly pctPer1MTokens: FeatureVector;
+  readonly r2: number;
+  readonly rmsePct: number;
+}
+

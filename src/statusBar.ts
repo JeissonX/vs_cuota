@@ -22,6 +22,7 @@ import {
   formatPoolShortName,
 } from './quotaParser';
 import { formatStatusBarPoolsText } from './statusBarFormatter';
+import type { CalibrationManager } from './phase2/calibrationManager';
 
 export class StatusBarManager {
   private item: vscode.StatusBarItem;
@@ -38,7 +39,11 @@ export class StatusBarManager {
   /**
    * Actualiza el contenido visual de la barra de estado según el snapshot y la configuración.
    */
-  update(snapshot: QuotaSnapshot, config: AgProConfig): void {
+  update(
+    snapshot: QuotaSnapshot,
+    config: AgProConfig,
+    calibrationManager?: CalibrationManager,
+  ): void {
     if (!snapshot.isConnected) {
       this.item.text = `$(error) ${t('statusBar.offline')}`;
       this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
@@ -51,7 +56,7 @@ export class StatusBarManager {
     if (groupsToDisplay.length === 0) {
       this.item.text = '$(rocket) AG Pro';
       this.item.backgroundColor = undefined;
-      this.item.tooltip = this.buildTooltip(snapshot, config);
+      this.item.tooltip = this.buildTooltip(snapshot, config, calibrationManager);
       return;
     }
 
@@ -80,7 +85,7 @@ export class StatusBarManager {
       const prefix = text.startsWith('$') || text.startsWith('🚀') ? '' : '$(rocket) ';
       this.item.text = `${prefix}${text}`;
     }
-    this.item.tooltip = this.buildTooltip(snapshot, config);
+    this.item.tooltip = this.buildTooltip(snapshot, config, calibrationManager);
   }
 
   /**
@@ -135,7 +140,11 @@ export class StatusBarManager {
   /**
    * Construye el tooltip Markdown minimalista, compacto y estructurado.
    */
-  private buildTooltip(snapshot: QuotaSnapshot, _config: AgProConfig): vscode.MarkdownString {
+  private buildTooltip(
+    snapshot: QuotaSnapshot,
+    _config: AgProConfig,
+    calibrationManager?: CalibrationManager,
+  ): vscode.MarkdownString {
     const md = new vscode.MarkdownString();
     md.isTrusted = true;
     md.supportHtml = true;
@@ -153,6 +162,7 @@ export class StatusBarManager {
     for (const group of snapshot.groups) {
       const lower = group.displayName.toLowerCase();
       let poolHeader = group.displayName;
+      const poolKey = lower.includes('gemini') ? 'gemini' : 'claude';
       if (lower.includes('gemini')) {
         poolHeader = 'Gemini (Flash)';
       } else if (lower.includes('claude') || lower.includes('gpt')) {
@@ -174,7 +184,16 @@ export class StatusBarManager {
               ? 'liberado'
               : 'full'
             : `${isEs ? 'reinicia en' : 'resets in'} ${b5h.resetCountdown || '-'}`;
-        md.appendMarkdown(`• 5h (Sprint): **${b5h.remainingPercent}%**${bindingTag} — ${resetText}\n`);
+
+        const proj = calibrationManager?.getBurnRateProjection(
+          poolKey,
+          '5h',
+          b5h.remainingFraction,
+          b5h.resetTime,
+        );
+        const projTag = proj && b5h.remainingPercent < 100 ? ` | ⏱️ ${proj.badgeText}` : '';
+
+        md.appendMarkdown(`• 5h (Sprint): **${b5h.remainingPercent}%**${bindingTag} — ${resetText}${projTag}\n`);
       }
 
       if (bWeekly) {
@@ -186,8 +205,17 @@ export class StatusBarManager {
               ? 'liberado'
               : 'full'
             : `${isEs ? 'reinicia en' : 'resets in'} ${bWeekly.resetCountdown || '-'}`;
+
+        const proj = calibrationManager?.getBurnRateProjection(
+          poolKey,
+          'weekly',
+          bWeekly.remainingFraction,
+          bWeekly.resetTime,
+        );
+        const projTag = proj && bWeekly.remainingPercent < 100 ? ` | ⏱️ ${proj.badgeText}` : '';
+
         md.appendMarkdown(
-          `• ${isEs ? 'Semanal' : 'Weekly'}: **${bWeekly.remainingPercent}%**${bindingTag} — ${resetText}\n`,
+          `• ${isEs ? 'Semanal' : 'Weekly'}: **${bWeekly.remainingPercent}%**${bindingTag} — ${resetText}${projTag}\n`,
         );
       }
 

@@ -16,6 +16,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../logger';
+import { decodeTokenUsage } from './protoWire';
+import type { StepUsage } from '../types';
 
 // @ts-expect-error node:sqlite es provisto por Node 22+
 import { DatabaseSync } from 'node:sqlite';
@@ -28,8 +30,8 @@ export interface RequestTokenMetric {
   outputTokens: number;
   thoughtTokens: number;
   totalTokens: number;
-  cacheTokens: number | null; // null = No disponible
-  cacheRatio: number | null;
+  cacheTokens: number | null; // Tokens leídos de caché (campo 9.6)
+  cacheRatio: number | null; // Ratio de caché (0..1)
   startTimestamp: Date | null;
   endTimestamp: Date | null;
   durationSeconds: number | null;
@@ -45,11 +47,14 @@ export interface SessionTokenSummary {
   totalOutputTokens: number;
   totalThoughtTokens: number;
   totalTokens: number;
+  totalCacheTokens: number;
   userTurns: number;
   modelTurns: number;
   requests: RequestTokenMetric[]; // Más recientes primero
   cacheRatioFormatted: string;
   averageTokensPerRequest: number;
+  isExpensiveSession?: boolean; // Aviso v1.2.0 de sesión cara
+  expensiveReason?: string;
 }
 
 export interface SessionListItem {
@@ -74,6 +79,7 @@ export interface TokenAuditSnapshot {
   activeSession: SessionTokenSummary | null;
   globalSummary: GlobalTokenSummary | null;
   lastScanTimestamp: Date;
+  collectedStepUsages?: StepUsage[];
 }
 
 /** Caché en memoria por sesión para lectura incremental */
@@ -87,6 +93,8 @@ interface CachedSessionData {
   totalPrompt: number;
   totalOutput: number;
   totalThought: number;
+  totalCache: number;
+  stepUsages: StepUsage[];
 }
 
 const sessionCache = new Map<string, CachedSessionData>();
@@ -340,6 +348,7 @@ export async function auditTokens(customConvDir?: string): Promise<TokenAuditSna
       activeSession,
       globalSummary,
       lastScanTimestamp: now,
+      collectedStepUsages: getAllCollectedStepUsages(),
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -368,10 +377,18 @@ function scanSessionIncremental(
     return buildSummaryFromCached(fileInfo.id, fileInfo.path, fileInfo.mtime, isActive, cached);
   }
 
-  let db: { prepare: (sql: string) => { all: () => unknown[]; get: () => unknown }; close: () => void } | null = null;
+  let db: { prepare: (sql: string) => { all: (param?: unknown) => unknown[]; get: () => unknown }; close: () => void; exec: (sql: string) => void } | null = null;
   try {
     const activeDb = new DatabaseSync(fileInfo.path, { readOnly: true });
     db = activeDb;
+
+    // Blindaje PRAGMA
+    try {
+      activeDb.exec('PRAGMA busy_timeout = 3000;');
+      activeDb.exec('PRAGMA query_only = ON;');
+    } catch {
+      // Ignorar si PRAGMAs fallan en ciertas versiones
+    }
 
     if (!cached) {
       cached = {
@@ -384,6 +401,8 @@ function scanSessionIncremental(
         totalPrompt: 0,
         totalOutput: 0,
         totalThought: 0,
+        totalCache: 0,
+        stepUsages: [],
       };
     }
 
@@ -398,22 +417,50 @@ function scanSessionIncremental(
     cached.modelTurns = counts?.mTurns || 0;
 
     // 2. Leer pasos incrementales (idx > lastReadIdx)
-    // Solo seleccionamos idx, step_type, metadata. NUNCA columnas de texto.
-    const stepsStmt = activeDb.prepare(`
-      SELECT idx, step_type, metadata 
-      FROM steps 
-      WHERE step_type = 15 AND idx > ${cached.lastReadIdx} 
-      ORDER BY idx ASC;
-    `);
-    const newRows = stepsStmt.all() as Array<{ idx: number; step_type: number; metadata: Buffer }>;
+    // Verificar si existe la columna status (en DB real existe, en fixtures antiguos puede omitirse)
+    const cols = activeDb.prepare("PRAGMA table_info(steps)").all() as Array<{ name: string }>;
+    const hasStatus = cols.some((c) => c.name === 'status');
+    const sql = hasStatus
+      ? `SELECT idx, step_type, status, metadata FROM steps WHERE step_type = 15 AND idx > ? ORDER BY idx ASC;`
+      : `SELECT idx, step_type, 3 as status, metadata FROM steps WHERE step_type = 15 AND idx > ? ORDER BY idx ASC;`;
+
+    const stepsStmt = activeDb.prepare(sql);
+    const newRows = stepsStmt.all(cached.lastReadIdx) as Array<{
+      idx: number;
+      step_type: number;
+      status: number;
+      metadata: Buffer | Uint8Array | null;
+    }>;
 
     for (const r of newRows) {
-      if (r.idx > cached.lastReadIdx) {
-        cached.lastReadIdx = r.idx;
+      // Cursor incremental seguro: detener cursor si el paso no ha finalizado
+      const isFinal = r.status === 3 || r.status === 2;
+      if (!isFinal) {
+        break;
       }
+      cached.lastReadIdx = r.idx;
       if (!r.metadata) continue;
 
       const meta = parseStepMetadata(r.metadata);
+      const tokenUsageResult = decodeTokenUsage(
+        r.metadata instanceof Uint8Array ? r.metadata : new Uint8Array(r.metadata),
+      );
+
+      let promptTokens = meta.promptTokens;
+      let outputTokens = meta.outputTokens;
+      let thoughtTokens = meta.thoughtTokens;
+      let cacheTokens: number | null = null;
+      let cacheRatio: number | null = null;
+
+      if (tokenUsageResult.ok) {
+        const u = tokenUsageResult.usage;
+        promptTokens = u.input;
+        outputTokens = u.output;
+        thoughtTokens = u.thoughts;
+        cacheTokens = u.cacheRead;
+        cacheRatio = u.input > 0 ? Math.round((u.cacheRead / u.input) * 1000) / 1000 : 0;
+      }
+
       let durationSec: number | null = null;
       let speed: number | null = null;
 
@@ -433,24 +480,24 @@ function scanSessionIncremental(
         const diff = endTotal - startTotal;
         if (diff > 0.05) {
           durationSec = Math.round(diff * 100) / 100;
-          if (meta.outputTokens > 0) {
-            speed = Math.round((meta.outputTokens / diff) * 10) / 10;
+          if (outputTokens > 0) {
+            speed = Math.round((outputTokens / diff) * 10) / 10;
           }
         }
       }
 
-      const totalStepTokens = meta.outputTokens + meta.thoughtTokens;
+      const totalStepTokens = outputTokens + thoughtTokens;
 
       const req: RequestTokenMetric = {
         stepIndex: r.idx,
         modelCode: meta.modelCode,
         modelName: resolveModelCodeName(meta.modelCode),
-        promptTokens: meta.promptTokens,
-        outputTokens: meta.outputTokens,
-        thoughtTokens: meta.thoughtTokens,
+        promptTokens,
+        outputTokens,
+        thoughtTokens,
         totalTokens: totalStepTokens,
-        cacheTokens: null, // No disponible en protobuf de metadata
-        cacheRatio: null,
+        cacheTokens,
+        cacheRatio,
         startTimestamp: startTs,
         endTimestamp: endTs,
         durationSeconds: durationSec,
@@ -458,10 +505,22 @@ function scanSessionIncremental(
       };
 
       cached.requests.push(req);
-      cached.totalOutput += meta.outputTokens;
-      cached.totalThought += meta.thoughtTokens;
-      // El promptTokens acumulado más reciente representa el tamaño del contexto de entrada
-      cached.totalPrompt = meta.promptTokens;
+      cached.totalOutput += outputTokens;
+      cached.totalThought += thoughtTokens;
+      cached.totalPrompt = promptTokens;
+      if (cacheTokens !== null) {
+        cached.totalCache += cacheTokens;
+      }
+
+      if (tokenUsageResult.ok) {
+        const su: StepUsage = {
+          id: r.idx,
+          conversationId: fileInfo.id,
+          ts: endTs ? endTs.getTime() : (startTs ? startTs.getTime() : fileInfo.mtime),
+          usage: tokenUsageResult.usage,
+        };
+        cached.stepUsages.push(su);
+      }
     }
 
     cached.mtime = fileInfo.mtime;
@@ -487,11 +546,33 @@ function buildSummaryFromCached(
   isActive: boolean,
   cached: CachedSessionData,
 ): SessionTokenSummary {
-  // Ordenar peticiones: más reciente primero para la tabla
   const sortedRequests = [...cached.requests].sort((a, b) => b.stepIndex - a.stepIndex);
   const totalTokens = cached.totalPrompt + cached.totalOutput + cached.totalThought;
   const avg =
     cached.requests.length > 0 ? Math.round(totalTokens / cached.requests.length) : 0;
+
+  const cacheRatioFormatted =
+    cached.totalPrompt > 0 && cached.totalCache > 0
+      ? `${Math.round((cached.totalCache / cached.totalPrompt) * 100)}%`
+      : cached.totalCache > 0
+        ? '0%'
+        : 'N/A';
+
+  // Detector de sesiones caras
+  let isExpensiveSession = false;
+  let expensiveReason: string | undefined;
+
+  if (isActive && cached.requests.length > 0) {
+    const latestReq = cached.requests[cached.requests.length - 1];
+    if (
+      latestReq &&
+      latestReq.promptTokens > 35000 &&
+      (latestReq.cacheRatio === null || latestReq.cacheRatio < 0.2)
+    ) {
+      isExpensiveSession = true;
+      expensiveReason = `Contexto alto (${latestReq.promptTokens.toLocaleString()} tokens con ratio de caché <20%). Te sugerimos abrir un nuevo chat para optimizar tu cuota.`;
+    }
+  }
 
   return {
     sessionId: id,
@@ -502,11 +583,14 @@ function buildSummaryFromCached(
     totalOutputTokens: cached.totalOutput,
     totalThoughtTokens: cached.totalThought,
     totalTokens,
+    totalCacheTokens: cached.totalCache,
     userTurns: cached.userTurns,
     modelTurns: cached.modelTurns,
     requests: sortedRequests,
-    cacheRatioFormatted: 'N/A',
+    cacheRatioFormatted,
     averageTokensPerRequest: avg,
+    isExpensiveSession,
+    expensiveReason,
   };
 }
 
@@ -575,3 +659,86 @@ function buildGlobalSummary(
     sessions: sessionList,
   };
 }
+
+/**
+ * Retorna todos los StepUsage acumulados de todas las sesiones leídas.
+ */
+export function getAllCollectedStepUsages(): StepUsage[] {
+  const all: StepUsage[] = [];
+  for (const c of sessionCache.values()) {
+    all.push(...c.stepUsages);
+  }
+  return all.sort((a, b) => a.ts - b.ts);
+}
+
+let convWatcher: fs.FSWatcher | null = null;
+let watcherDebounceTimer: NodeJS.Timeout | null = null;
+
+/**
+ * Watcher ligero con debounce de 1.5s sobre el directorio de conversaciones.
+ * Se pausa automáticamente cuando la ventana de VS Code no tiene foco.
+ */
+export function startConversationWatcher(
+  convDir: string,
+  onChanged: () => void,
+): { dispose: () => void } {
+  if (convWatcher) {
+    try {
+      convWatcher.close();
+    } catch {
+      // Ignorar
+    }
+    convWatcher = null;
+  }
+
+  if (!fs.existsSync(convDir)) {
+    return { dispose: () => {} };
+  }
+
+  try {
+    convWatcher = fs.watch(convDir, (_eventType, filename) => {
+      // Pausar si vscode window no tiene foco
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const vscode = require('vscode');
+        if (vscode?.window && !vscode.window.state.focused) {
+          return;
+        }
+      } catch {
+        // En tests unitarios sin vscode, continuar normalmente
+      }
+
+      const strName = typeof filename === 'string' ? filename : '';
+      if (!strName || (!strName.endsWith('.db') && !strName.endsWith('.db-wal'))) {
+        return;
+      }
+
+      if (watcherDebounceTimer) {
+        clearTimeout(watcherDebounceTimer);
+      }
+      watcherDebounceTimer = setTimeout(() => {
+        onChanged();
+      }, 1500);
+    });
+  } catch (err) {
+    logger.warn(`No se pudo iniciar fs.watch en ${convDir}: ${err}`);
+  }
+
+  return {
+    dispose: () => {
+      if (watcherDebounceTimer) {
+        clearTimeout(watcherDebounceTimer);
+        watcherDebounceTimer = null;
+      }
+      if (convWatcher) {
+        try {
+          convWatcher.close();
+        } catch {
+          // Ignorar
+        }
+        convWatcher = null;
+      }
+    },
+  };
+}
+

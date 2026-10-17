@@ -16,6 +16,7 @@ import * as vscode from 'vscode';
 import type { QuotaSnapshot, AgProConfig } from '../types';
 import type { TokenAuditSnapshot } from '../phase2/tokenAuditor';
 import type { QuotaHistoryManager } from '../historyManager';
+import type { CalibrationManager, CalibrationPoolStatus } from '../phase2/calibrationManager';
 import { t, getLanguage } from '../i18n';
 import { logger } from '../logger';
 
@@ -24,6 +25,7 @@ let latestSnapshot: QuotaSnapshot | null = null;
 let latestTokenSnapshot: TokenAuditSnapshot | null = null;
 let latestConfig: AgProConfig | null = null;
 let latestHistoryManager: QuotaHistoryManager | null = null;
+let latestCalibrationManager: CalibrationManager | null = null;
 
 /**
  * Provider para el Webview registrado en la barra lateral (Activity Bar).
@@ -87,6 +89,7 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
         latestTokenSnapshot,
         latestConfig,
         latestHistoryManager,
+        latestCalibrationManager,
         true,
       );
     } else {
@@ -99,11 +102,15 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     tokenSnapshot: TokenAuditSnapshot | null,
     config: AgProConfig,
     historyManager: QuotaHistoryManager | null,
+    calibrationManager?: CalibrationManager | null,
   ): void {
     latestSnapshot = snapshot;
     latestTokenSnapshot = tokenSnapshot;
     latestConfig = config;
     latestHistoryManager = historyManager;
+    if (calibrationManager !== undefined) {
+      latestCalibrationManager = calibrationManager;
+    }
     this.render();
   }
 }
@@ -117,12 +124,14 @@ export function showDashboard(
   tokenSnapshot: TokenAuditSnapshot | null,
   config: AgProConfig,
   historyManager: QuotaHistoryManager | null,
+  calibrationManager: CalibrationManager | null,
   onRefresh: () => void,
 ): void {
   latestSnapshot = snapshot;
   latestTokenSnapshot = tokenSnapshot;
   latestConfig = config;
   latestHistoryManager = historyManager;
+  latestCalibrationManager = calibrationManager;
 
   if (currentPanel) {
     currentPanel.reveal(vscode.ViewColumn.One);
@@ -140,7 +149,14 @@ export function showDashboard(
     },
   );
 
-  currentPanel.webview.html = buildHtml(snapshot, tokenSnapshot, config, historyManager, false);
+  currentPanel.webview.html = buildHtml(
+    snapshot,
+    tokenSnapshot,
+    config,
+    historyManager,
+    calibrationManager,
+    false,
+  );
 
   currentPanel.webview.onDidReceiveMessage(
     (msg: { command: string }) => {
@@ -174,11 +190,15 @@ export function updateDashboardIfOpen(
   tokenSnapshot: TokenAuditSnapshot | null,
   config: AgProConfig,
   historyManager: QuotaHistoryManager | null,
+  calibrationManager?: CalibrationManager | null,
 ): void {
   latestSnapshot = snapshot;
   latestTokenSnapshot = tokenSnapshot;
   latestConfig = config;
   latestHistoryManager = historyManager;
+  if (calibrationManager !== undefined) {
+    latestCalibrationManager = calibrationManager;
+  }
   if (currentPanel) {
     sendUpdate();
   }
@@ -193,6 +213,7 @@ function sendUpdate(): void {
       latestTokenSnapshot,
       latestConfig,
       latestHistoryManager,
+      latestCalibrationManager,
       false,
     );
   } catch (err) {
@@ -251,6 +272,7 @@ function buildHtml(
   tokenSnapshot: TokenAuditSnapshot | null,
   _config: AgProConfig,
   historyManager: QuotaHistoryManager | null,
+  calibrationManager: CalibrationManager | null = null,
   isSidebar: boolean = false,
 ): string {
   const lang = getLanguage();
@@ -278,6 +300,17 @@ function buildHtml(
         .map((m) => `<span class="model-pill">${m.label}</span>`)
         .join('');
 
+      const lowerName = group.displayName.toLowerCase();
+      const poolCategory =
+        lowerName.includes('gemini') || lowerName.includes('argon') || lowerName.includes('flash')
+          ? 'gemini'
+          : lowerName.includes('claude') ||
+              lowerName.includes('gpt') ||
+              lowerName.includes('sonnet') ||
+              lowerName.includes('opus')
+            ? 'claude'
+            : 'other';
+
       const bucketRows = group.buckets
         .map((b) => {
           const isBinding = b.remainingPercent === lowestPct;
@@ -301,6 +334,24 @@ function buildHtml(
 
           const isExhausted5h = b.window === '5h' && b.remainingPercent === 0;
 
+          // Proyección de Burn Rate vs Reset (v1.2.0)
+          const poolKey = poolCategory === 'claude' ? 'claude' : 'gemini';
+          const winKey = b.window === 'weekly' ? 'weekly' : '5h';
+          const proj = calibrationManager?.getBurnRateProjection(
+            poolKey,
+            winKey,
+            b.remainingFraction,
+            b.resetTime,
+          );
+
+          const burnRateHtml = proj
+            ? `
+              <div class="burn-rate-row ${proj.willDepleteBeforeReset ? 'deplete' : 'steady'}">
+                <span class="burn-badge">${proj.badgeText}</span>
+                <span class="burn-desc">${proj.statusText}</span>
+              </div>`
+            : '';
+
           return `
             <div class="bucket ${isBinding ? 'bucket-binding' : ''}">
               <div class="bucket-header">
@@ -319,6 +370,7 @@ function buildHtml(
               <div class="bucket-meta">
                 <span>${t('dashboard.resetIn')}: <strong>${b.resetCountdown || '-'}</strong> ${resetTimeFormatted ? `(${resetTimeFormatted})` : ''}</span>
               </div>
+              ${burnRateHtml}
               ${
                 isExhausted5h
                   ? `<div class="exhausted-alert">
@@ -332,17 +384,6 @@ function buildHtml(
         })
         .join('');
 
-      const lowerName = group.displayName.toLowerCase();
-      const poolCategory =
-        lowerName.includes('gemini') || lowerName.includes('argon') || lowerName.includes('flash')
-          ? 'gemini'
-          : lowerName.includes('claude') ||
-              lowerName.includes('gpt') ||
-              lowerName.includes('sonnet') ||
-              lowerName.includes('opus')
-            ? 'claude'
-            : 'other';
-
       return `
         <div class="card pool-card" data-pool="${poolCategory}">
           <div class="card-title-row">
@@ -353,6 +394,68 @@ function buildHtml(
         </div>`;
     })
     .join('');
+
+  // 1b. Sección de Calibración NNLS (v1.2.0)
+  const gemini5h = calibrationManager?.getCalibrationStatus('gemini', '5h');
+  const claude5h = calibrationManager?.getCalibrationStatus('claude', '5h');
+
+  const renderCalibrationCard = (title: string, status?: CalibrationPoolStatus) => {
+    if (!status) return '';
+    if (status.isTrustworthy && status.fit) {
+      const f = status.fit;
+      return `
+        <div class="calibration-card">
+          <div class="calib-header">
+            <span class="calib-title">📊 ${title}</span>
+            <span class="calib-badge trustworthy">✓ ${isEs ? 'Calibrado' : 'Calibrated'} (R²: ${(f.r2 * 100).toFixed(0)}%, n=${f.n})</span>
+          </div>
+          <div class="calib-weights-grid">
+            <div class="weight-item">
+              <span class="weight-label">${isEs ? 'Entrada pura' : 'Pure Input'}:</span>
+              <span class="weight-val">${f.pctPer1MTokens.inputNoCache.toFixed(2)}% <small>/1M</small></span>
+            </div>
+            <div class="weight-item">
+              <span class="weight-label">${isEs ? 'Lectura caché' : 'Cache Read'}:</span>
+              <span class="weight-val">${f.pctPer1MTokens.cacheRead.toFixed(2)}% <small>/1M</small></span>
+            </div>
+            <div class="weight-item">
+              <span class="weight-label">${isEs ? 'Salida texto' : 'Output'}:</span>
+              <span class="weight-val">${f.pctPer1MTokens.output.toFixed(2)}% <small>/1M</small></span>
+            </div>
+            <div class="weight-item">
+              <span class="weight-label">${isEs ? 'Pensamiento' : 'Thoughts'}:</span>
+              <span class="weight-val">${f.pctPer1MTokens.thoughts.toFixed(2)}% <small>/1M</small></span>
+            </div>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="calibration-card">
+        <div class="calib-header">
+          <span class="calib-title">📊 ${title}</span>
+          <span class="calib-badge gathering">⏳ ${status.progressText}</span>
+        </div>
+        <p class="calib-gathering-hint">
+          ${isEs
+            ? 'Alineando caídas reales de cuota contra tokens locales mediante NNLS. Requiere 30 muestras con R² ≥ 0.60 para desplegar pesos confiables.'
+            : 'Aligning empirical quota drops with local tokens via NNLS. Requires 30 samples with R² ≥ 0.60 to display reliable weights.'}
+        </p>
+      </div>`;
+  };
+
+  const calibrationSection = calibrationManager
+    ? `
+      <div class="calibration-section">
+        <div class="section-title-row">
+          <h3>${isEs ? 'Estimación de Pesos de Cuota (NNLS)' : 'Quota Weight Calibration (NNLS)'}</h3>
+          <span class="section-subtitle">${isEs ? 'Ajuste matemático Lawson-Hanson sobre deltas reales' : 'Lawson-Hanson mathematical fit on real deltas'}</span>
+        </div>
+        <div class="calibration-cards-grid">
+          ${renderCalibrationCard('Gemini (Ventana 5h)', gemini5h)}
+          ${renderCalibrationCard('Claude & GPT (Ventana 5h)', claude5h)}
+        </div>
+      </div>`
+    : '';
 
   // 2. Tokens de la Sesión Activa
   let sessionTokensHtml = '';
@@ -407,6 +510,19 @@ function buildHtml(
             <span>${t('tokens.turns')}: <strong>${sess.userTurns}</strong> ${isEs ? 'usuario' : 'user'} · <strong>${sess.modelTurns}</strong> ${isEs ? 'modelo' : 'model'}</span>
           </div>
         </div>
+
+        ${
+          sess.isExpensiveSession
+            ? `
+              <div class="expensive-session-banner">
+                <span class="alert-icon">⚠️</span>
+                <div>
+                  <strong>${isEs ? 'Aviso de Sesión Cara' : 'Expensive Session Warning'}:</strong>
+                  ${sess.expensiveReason}
+                </div>
+              </div>`
+            : ''
+        }
 
         <div class="metrics-grid">
           <div class="metric-card">
@@ -785,6 +901,132 @@ function buildHtml(
       .filter-pills { width: 100%; justify-content: space-between; }
       .filter-pill { flex: 1; text-align: center; font-size: 0.8em; padding: 4px 6px; }
     }
+
+    /* Estilos de Proyección de Agotamiento y Calibración NNLS (v1.2.0) */
+    .burn-rate-row {
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.82em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(128, 128, 128, 0.08);
+      border: 1px solid var(--card-border);
+    }
+    .burn-rate-row.deplete {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #ef4444;
+    }
+    .burn-rate-row.steady {
+      background: rgba(63, 185, 80, 0.08);
+      border-color: rgba(63, 185, 80, 0.25);
+    }
+    .burn-badge {
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.85em;
+    }
+    .burn-rate-row.deplete .burn-badge {
+      background: rgba(239, 68, 68, 0.25);
+      color: #ef4444;
+    }
+    .burn-rate-row.steady .burn-badge {
+      background: rgba(63, 185, 80, 0.2);
+      color: #3fb950;
+    }
+    .burn-desc {
+      font-size: 0.9em;
+      color: var(--fg);
+    }
+
+    .calibration-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .section-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .section-title-row h3 { font-size: 1.15em; font-weight: 600; }
+    .section-subtitle { font-size: 0.85em; color: var(--muted); }
+    .calibration-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .calibration-card {
+      background: rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 14px;
+    }
+    .calib-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .calib-title { font-weight: 600; font-size: 0.95em; }
+    .calib-badge {
+      font-size: 0.78em;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .calib-badge.trustworthy {
+      background: rgba(63, 185, 80, 0.15);
+      color: #3fb950;
+      border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+    .calib-badge.gathering {
+      background: rgba(55, 148, 255, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(55, 148, 255, 0.25);
+    }
+    .calib-gathering-hint {
+      font-size: 0.82em;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .calib-weights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .weight-item {
+      display: flex;
+      flex-direction: column;
+      background: rgba(128, 128, 128, 0.06);
+      padding: 6px 8px;
+      border-radius: 4px;
+    }
+    .weight-label { font-size: 0.75em; color: var(--muted); }
+    .weight-val { font-size: 1.05em; font-weight: 600; color: var(--fg); }
+    .weight-val small { font-size: 0.75em; color: var(--muted); font-weight: normal; }
+
+    .expensive-session-banner {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #f59e0b;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9em;
+    }
+    .expensive-session-banner .alert-icon { font-size: 1.3em; }
   </style>
 </head>
 <body class="${isSidebar ? 'is-sidebar' : ''}">
@@ -827,6 +1069,8 @@ function buildHtml(
   </div>
 
   <div class="cards">${groupCards}</div>
+
+  ${calibrationSection}
 
   ${sessionTokensHtml}
 

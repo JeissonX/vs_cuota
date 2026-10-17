@@ -13,6 +13,10 @@ import type {
   QuotaGroup,
   QuotaBucket,
   ModelInfo,
+  CalibrationQuotaSnapshot,
+  PoolId,
+  WindowId,
+  WindowReading,
 } from './types';
 import { QuotaLevel } from './types';
 
@@ -276,3 +280,63 @@ export function getQuotaLevel(
   }
   return QuotaLevel.Normal;
 }
+
+/**
+ * Conecta la salida real de RetrieveUserQuotaSummary con CalibrationQuotaSnapshot (v1.2.0)
+ * Mapeo:
+ *   "Gemini" -> 'gemini'
+ *   "Claude" -> 'claude'
+ *   "5h" -> '5h'
+ *   "weekly" -> 'weekly'
+ *   resetTime ISO -> resetAtMs (epoch ms)
+ */
+export function toCalibrationSnapshot(
+  quotaRaw: RawQuotaSummaryResponse | null,
+  takenAtMs: number = Date.now(),
+): CalibrationQuotaSnapshot | null {
+  if (!quotaRaw?.response?.groups || quotaRaw.response.groups.length === 0) {
+    return null;
+  }
+
+  const pools: Record<PoolId, Partial<Record<WindowId, WindowReading>>> = {
+    gemini: {},
+    claude: {},
+  };
+
+  for (const group of quotaRaw.response.groups) {
+    const dName = (group.displayName || '').toLowerCase();
+    let poolId: PoolId | null = null;
+    if (dName.includes('gemini')) {
+      poolId = 'gemini';
+    } else if (dName.includes('claude') || dName.includes('gpt')) {
+      poolId = 'claude';
+    }
+    if (!poolId) continue;
+
+    for (const bucket of group.buckets || []) {
+      const wName = (bucket.window || bucket.bucketId || '').toLowerCase();
+      let windowId: WindowId | null = null;
+      if (wName.includes('5h')) {
+        windowId = '5h';
+      } else if (wName.includes('week')) {
+        windowId = 'weekly';
+      }
+      if (!windowId) continue;
+
+      const remainingFraction = clampFraction(bucket.remainingFraction);
+      const resetTime = parseResetTime(bucket.resetTime);
+      const resetAtMs = resetTime ? resetTime.getTime() : 0;
+
+      pools[poolId][windowId] = {
+        remainingFraction,
+        resetAtMs,
+      };
+    }
+  }
+
+  return {
+    takenAt: takenAtMs,
+    pools,
+  };
+}
+
