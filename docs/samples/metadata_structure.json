@@ -1,0 +1,1498 @@
+{
+  "sampleCount": 5,
+  "samples": [
+    {
+      "idx": 453,
+      "step_type": 15,
+      "metadataLengthBytes": 319,
+      "parsedFields": [
+        {
+          "fieldNumber": 1,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214220
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 38808600
+            }
+          ]
+        },
+        {
+          "fieldNumber": 3,
+          "wireType": 0,
+          "value": 2
+        },
+        {
+          "fieldNumber": 6,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214225
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 126009300
+            }
+          ]
+        },
+        {
+          "fieldNumber": 7,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214225
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 258612300
+            }
+          ]
+        },
+        {
+          "fieldNumber": 8,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214225
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 258612300
+            }
+          ]
+        },
+        {
+          "fieldNumber": 9,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 2212
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 106
+            },
+            {
+              "fieldNumber": 5,
+              "wireType": 0,
+              "value": 228817
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 24
+            },
+            {
+              "fieldNumber": 8,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 2,
+                  "value": "sessionID"
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 5,
+                      "wireType": 5,
+                      "value": "[32-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 9,
+              "wireType": 0,
+              "value": 20
+            },
+            {
+              "fieldNumber": 10,
+              "wireType": 0,
+              "value": 86
+            },
+            {
+              "fieldNumber": 11,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 15,
+                  "wireType": 2,
+                  "value": "REDACTED"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 11,
+          "wireType": 0,
+          "value": 1318
+        },
+        {
+          "fieldNumber": 12,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 12,
+              "wireType": 5,
+              "value": "[32-bit float/int]"
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 98
+            }
+          ]
+        },
+        {
+          "fieldNumber": 13,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            }
+          ]
+        },
+        {
+          "fieldNumber": 20,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 6,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 7,
+                      "wireType": 1,
+                      "value": "[64-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 453
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 203
+            },
+            {
+              "fieldNumber": 4,
+              "wireType": 2,
+              "value": "REDACTED"
+            }
+          ]
+        },
+        {
+          "fieldNumber": 21,
+          "wireType": 0,
+          "value": 1
+        },
+        {
+          "fieldNumber": 26,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 8
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214225
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 126009300
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 3
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214225
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 258612300
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 32,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214225
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 258612300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "idx": 451,
+      "step_type": 15,
+      "metadataLengthBytes": 328,
+      "parsedFields": [
+        {
+          "fieldNumber": 1,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214199
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 420209000
+            }
+          ]
+        },
+        {
+          "fieldNumber": 3,
+          "wireType": 0,
+          "value": 2
+        },
+        {
+          "fieldNumber": 6,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214218
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 696847500
+            }
+          ]
+        },
+        {
+          "fieldNumber": 7,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214218
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 769790100
+            }
+          ]
+        },
+        {
+          "fieldNumber": 8,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214218
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 769790100
+            }
+          ]
+        },
+        {
+          "fieldNumber": 9,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 3236
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 2084
+            },
+            {
+              "fieldNumber": 5,
+              "wireType": 0,
+              "value": 225577
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 24
+            },
+            {
+              "fieldNumber": 8,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 2,
+                  "value": "sessionID"
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 5,
+                      "wireType": 5,
+                      "value": "[32-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 9,
+              "wireType": 0,
+              "value": 71
+            },
+            {
+              "fieldNumber": 10,
+              "wireType": 0,
+              "value": 2013
+            },
+            {
+              "fieldNumber": 11,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 14,
+                  "wireType": 5,
+                  "value": "[32-bit float/int]"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 11,
+          "wireType": 0,
+          "value": 1318
+        },
+        {
+          "fieldNumber": 12,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 12,
+              "wireType": 5,
+              "value": "[32-bit float/int]"
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 98
+            }
+          ]
+        },
+        {
+          "fieldNumber": 13,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            }
+          ]
+        },
+        {
+          "fieldNumber": 20,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 6,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 7,
+                      "wireType": 1,
+                      "value": "[64-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 451
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 202
+            },
+            {
+              "fieldNumber": 4,
+              "wireType": 2,
+              "value": "REDACTED"
+            }
+          ]
+        },
+        {
+          "fieldNumber": 21,
+          "wireType": 0,
+          "value": 1
+        },
+        {
+          "fieldNumber": 26,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 8
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214218
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 696847500
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 3
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214218
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 769790100
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 32,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214218
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 769790100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "idx": 449,
+      "step_type": 15,
+      "metadataLengthBytes": 327,
+      "parsedFields": [
+        {
+          "fieldNumber": 1,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214187
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 312284200
+            }
+          ]
+        },
+        {
+          "fieldNumber": 3,
+          "wireType": 0,
+          "value": 2
+        },
+        {
+          "fieldNumber": 6,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214196
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 103841000
+            }
+          ]
+        },
+        {
+          "fieldNumber": 7,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214198
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 638445300
+            }
+          ]
+        },
+        {
+          "fieldNumber": 8,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214198
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 638445300
+            }
+          ]
+        },
+        {
+          "fieldNumber": 9,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 3449
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 1014
+            },
+            {
+              "fieldNumber": 5,
+              "wireType": 0,
+              "value": 224168
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 24
+            },
+            {
+              "fieldNumber": 8,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 2,
+                  "value": "sessionID"
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 5,
+                      "wireType": 5,
+                      "value": "[32-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 9,
+              "wireType": 0,
+              "value": 747
+            },
+            {
+              "fieldNumber": 10,
+              "wireType": 0,
+              "value": 267
+            },
+            {
+              "fieldNumber": 11,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 14,
+                  "wireType": 2,
+                  "value": "REDACTED"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 11,
+          "wireType": 0,
+          "value": 1318
+        },
+        {
+          "fieldNumber": 12,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 12,
+              "wireType": 5,
+              "value": "[32-bit float/int]"
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 98
+            }
+          ]
+        },
+        {
+          "fieldNumber": 13,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            }
+          ]
+        },
+        {
+          "fieldNumber": 20,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 6,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 7,
+                      "wireType": 1,
+                      "value": "[64-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 449
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 201
+            },
+            {
+              "fieldNumber": 4,
+              "wireType": 2,
+              "value": "REDACTED"
+            }
+          ]
+        },
+        {
+          "fieldNumber": 21,
+          "wireType": 0,
+          "value": 1
+        },
+        {
+          "fieldNumber": 26,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 8
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214196
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 103841000
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 3
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214198
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 638445300
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 32,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214198
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 638445300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "idx": 447,
+      "step_type": 15,
+      "metadataLengthBytes": 329,
+      "parsedFields": [
+        {
+          "fieldNumber": 1,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214175
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 792801900
+            }
+          ]
+        },
+        {
+          "fieldNumber": 3,
+          "wireType": 0,
+          "value": 2
+        },
+        {
+          "fieldNumber": 6,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214186
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 530237000
+            }
+          ]
+        },
+        {
+          "fieldNumber": 7,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214186
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 666175100
+            }
+          ]
+        },
+        {
+          "fieldNumber": 8,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214186
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 666175100
+            }
+          ]
+        },
+        {
+          "fieldNumber": 9,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 2622
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 1279
+            },
+            {
+              "fieldNumber": 5,
+              "wireType": 0,
+              "value": 223584
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 24
+            },
+            {
+              "fieldNumber": 8,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 2,
+                  "value": "sessionID"
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 5,
+                      "wireType": 5,
+                      "value": "[32-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 9,
+              "wireType": 0,
+              "value": 507
+            },
+            {
+              "fieldNumber": 10,
+              "wireType": 0,
+              "value": 772
+            },
+            {
+              "fieldNumber": 11,
+              "wireType": 2,
+              "value": "REDACTED"
+            }
+          ]
+        },
+        {
+          "fieldNumber": 11,
+          "wireType": 0,
+          "value": 1318
+        },
+        {
+          "fieldNumber": 12,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 12,
+              "wireType": 5,
+              "value": "[32-bit float/int]"
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 98
+            }
+          ]
+        },
+        {
+          "fieldNumber": 13,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            }
+          ]
+        },
+        {
+          "fieldNumber": 20,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 6,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 7,
+                      "wireType": 1,
+                      "value": "[64-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 447
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 200
+            },
+            {
+              "fieldNumber": 4,
+              "wireType": 2,
+              "value": "REDACTED"
+            }
+          ]
+        },
+        {
+          "fieldNumber": 21,
+          "wireType": 0,
+          "value": 1
+        },
+        {
+          "fieldNumber": 26,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 8
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214186
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 530237000
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 3
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214186
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 666175100
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 32,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214186
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 666175100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "idx": 445,
+      "step_type": 15,
+      "metadataLengthBytes": 323,
+      "parsedFields": [
+        {
+          "fieldNumber": 1,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214161
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 837676900
+            }
+          ]
+        },
+        {
+          "fieldNumber": 3,
+          "wireType": 0,
+          "value": 2
+        },
+        {
+          "fieldNumber": 6,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214170
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 119294800
+            }
+          ]
+        },
+        {
+          "fieldNumber": 7,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214175
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 211661600
+            }
+          ]
+        },
+        {
+          "fieldNumber": 8,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214175
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 211661600
+            }
+          ]
+        },
+        {
+          "fieldNumber": 9,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 2590
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 1587
+            },
+            {
+              "fieldNumber": 5,
+              "wireType": 0,
+              "value": 220988
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 24
+            },
+            {
+              "fieldNumber": 8,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 2,
+                  "value": "sessionID"
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 5,
+                      "wireType": 5,
+                      "value": "[32-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 9,
+              "wireType": 0,
+              "value": 823
+            },
+            {
+              "fieldNumber": 10,
+              "wireType": 0,
+              "value": 764
+            },
+            {
+              "fieldNumber": 11,
+              "wireType": 2,
+              "value": "REDACTED"
+            }
+          ]
+        },
+        {
+          "fieldNumber": 11,
+          "wireType": 0,
+          "value": 1318
+        },
+        {
+          "fieldNumber": 12,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 12,
+              "wireType": 5,
+              "value": "[32-bit float/int]"
+            },
+            {
+              "fieldNumber": 6,
+              "wireType": 0,
+              "value": 98
+            }
+          ]
+        },
+        {
+          "fieldNumber": 13,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1318
+            }
+          ]
+        },
+        {
+          "fieldNumber": 20,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 6,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 7,
+                      "wireType": 1,
+                      "value": "[64-bit float/int]"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 445
+            },
+            {
+              "fieldNumber": 3,
+              "wireType": 0,
+              "value": 199
+            },
+            {
+              "fieldNumber": 4,
+              "wireType": 2,
+              "value": "REDACTED"
+            }
+          ]
+        },
+        {
+          "fieldNumber": 21,
+          "wireType": 0,
+          "value": 1
+        },
+        {
+          "fieldNumber": 26,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 8
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214170
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 119294800
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "fieldNumber": 1,
+              "wireType": 2,
+              "value": [
+                {
+                  "fieldNumber": 1,
+                  "wireType": 0,
+                  "value": 3
+                },
+                {
+                  "fieldNumber": 2,
+                  "wireType": 2,
+                  "value": [
+                    {
+                      "fieldNumber": 1,
+                      "wireType": 0,
+                      "value": 1792214175
+                    },
+                    {
+                      "fieldNumber": 2,
+                      "wireType": 0,
+                      "value": 211661600
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fieldNumber": 32,
+          "wireType": 2,
+          "value": [
+            {
+              "fieldNumber": 1,
+              "wireType": 0,
+              "value": 1792214175
+            },
+            {
+              "fieldNumber": 2,
+              "wireType": 0,
+              "value": 211661600
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

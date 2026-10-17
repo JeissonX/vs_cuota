@@ -1,0 +1,209 @@
+{
+  "databaseFile": "REDACTED.db",
+  "tables": {
+    "trajectory_meta": {
+      "columns": [
+        {
+          "name": "trajectory_id",
+          "type": "TEXT",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "cascade_id",
+          "type": "TEXT",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "trajectory_type",
+          "type": "INTEGER",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "source",
+          "type": "INTEGER",
+          "isPrimaryKey": false
+        }
+      ]
+    },
+    "steps": {
+      "columns": [
+        {
+          "name": "idx",
+          "type": "INTEGER",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "step_type",
+          "type": "INTEGER",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "INTEGER",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "has_subtrajectory",
+          "type": "numeric",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "metadata",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "error_details",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "permissions",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "task_details",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "render_info",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "step_payload",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "step_format",
+          "type": "INTEGER",
+          "isPrimaryKey": false
+        }
+      ]
+    },
+    "gen_metadata": {
+      "columns": [
+        {
+          "name": "idx",
+          "type": "INTEGER",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        },
+        {
+          "name": "size",
+          "type": "INTEGER",
+          "isPrimaryKey": false
+        }
+      ]
+    },
+    "executor_metadata": {
+      "columns": [
+        {
+          "name": "idx",
+          "type": "INTEGER",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        }
+      ]
+    },
+    "parent_references": {
+      "columns": [
+        {
+          "name": "idx",
+          "type": "INTEGER",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        }
+      ]
+    },
+    "trajectory_metadata_blob": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        }
+      ]
+    },
+    "battle_mode_infos": {
+      "columns": [
+        {
+          "name": "idx",
+          "type": "INTEGER",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "data",
+          "type": "BLOB",
+          "isPrimaryKey": false
+        }
+      ]
+    }
+  },
+  "stepTypesSummary": [
+    {
+      "step_type": 5,
+      "count": 78
+    },
+    {
+      "step_type": 8,
+      "count": 63
+    },
+    {
+      "step_type": 9,
+      "count": 12
+    },
+    {
+      "step_type": 14,
+      "count": 4
+    },
+    {
+      "step_type": 15,
+      "count": 206
+    },
+    {
+      "step_type": 17,
+      "count": 3
+    },
+    {
+      "step_type": 21,
+      "count": 72
+    },
+    {
+      "step_type": 23,
+      "count": 4
+    },
+    {
+      "step_type": 98,
+      "count": 4
+    },
+    {
+      "step_type": 99,
+      "count": 4
+    },
+    {
+      "step_type": 101,
+      "count": 5
+    }
+  ]
+}

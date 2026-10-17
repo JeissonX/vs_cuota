@@ -17,9 +17,9 @@ Este documento registra el progreso secuencial de cada hito de desarrollo para l
 ## Versión 1.1.0 (Auditoría de Tokens y Mejoras Visuales)
 | Hito | Descripción | Estado | Notas |
 | :--- | :--- | :---: | :--- |
-| **HITO A** | Barra de estado completa (todos los pools, ambas ventanas 5h/semanal, binding vs both, tooltip enriquecido, tests) | ✅ | Implementado, 17 pruebas unitarias pasando. |
-| **HITO B** | Inspección real de datos de tokens (inspección de SQLite en `~/.gemini`, esquema y metadata a `docs/samples/` con REDACTED, sin texto) | ⬜ | Siguiente hito. |
-| **HITO C** | Auditor de tokens (`tokenAuditor.ts`: sesión activa incremental, globales, degradación sin node:sqlite, tests unitarios sintéticos) | ⬜ | Pendiente. |
+| **HITO A** | Barra de estado completa (todos los pools, ambas ventanas 5h/semanal, binding vs both, tooltip enriquecido, tests) | ✅ | Commit `c8ece89`. |
+| **HITO B** | Inspección real de datos de tokens (inspección de SQLite en `~/.gemini`, esquema y metadata a `docs/samples/` con REDACTED, sin texto) | ✅ | Esquema y protobuf verificados; timestamps y tokens de entrada/salida/thought confirmados; caché no disponible documentado en ASSUMPTIONS.md. |
+| **HITO C** | Auditor de tokens (`tokenAuditor.ts`: sesión activa incremental, globales, degradación sin node:sqlite, tests unitarios sintéticos) | ⬜ | Siguiente hito. |
 | **HITO D** | Dashboard rico (tarjetas ambas ventanas, tokens activos e históricos por petición, lista de sesiones, historial cuota sparkline, QuickPick) | ⬜ | Pendiente. |
 | **HITO E** | Cierre v1.1.0 (actualizar versión, README, CHANGELOG, THIRD_PARTY_NOTICES, generar `.vsix` v1.1.0 e instrucciones) | ⬜ | Pendiente. |
 
