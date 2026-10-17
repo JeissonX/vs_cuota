@@ -4,7 +4,7 @@
  */
 
 import * as vscode from 'vscode';
-import type { AgProConfig, StatusBarFormat } from './types';
+import type { AgProConfig, StatusBarFormat, StatusBarWindowsMode } from './types';
 
 const VALID_FORMATS: StatusBarFormat[] = [
   'icon',
@@ -29,6 +29,12 @@ export function readConfig(): AgProConfig {
     ? (rawFormat as StatusBarFormat)
     : 'standard';
 
+  const rawShowWindows = cfg.get<string>('statusBar.showWindows', 'both');
+  const statusBarShowWindows: StatusBarWindowsMode =
+    rawShowWindows === 'binding' ? 'binding' : 'both';
+
+  const statusBarPools = cfg.get<string[]>('statusBar.pools', []);
+
   const rawLogLevel = cfg.get<string>('logLevel', 'info');
   const logLevel = VALID_LOG_LEVELS.includes(rawLogLevel as (typeof VALID_LOG_LEVELS)[number])
     ? (rawLogLevel as AgProConfig['logLevel'])
@@ -45,6 +51,8 @@ export function readConfig(): AgProConfig {
   return {
     refreshIntervalSeconds: Math.max(5, cfg.get<number>('refreshIntervalSeconds', 15)),
     statusBarFormat: format,
+    statusBarShowWindows,
+    statusBarPools,
     warningThreshold: Math.min(99, Math.max(1, warningRaw)),
     criticalThreshold: Math.min(99, Math.max(1, criticalRaw)),
     language,

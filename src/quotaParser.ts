@@ -1,5 +1,5 @@
 /**
- * AG Pro Quota — Parser de Respuestas del Language Server
+ * AG Pro Quota — Parser de Respuestas del Language Server (v1.1.0)
  *
  * Escrito y probado contra las muestras reales de docs/samples/:
  * - RetrieveUserQuotaSummary.json
@@ -50,6 +50,8 @@ export function buildSnapshot(
       const countdown = formatCountdown(rawBucket.description, resetTime);
 
       buckets.push({
+        bucketId: rawBucket.bucketId,
+        displayName: rawBucket.displayName,
         window: rawBucket.window || 'unknown',
         remainingFraction: fraction,
         remainingPercent: percent,
@@ -65,6 +67,7 @@ export function buildSnapshot(
     groups.push({
       groupId: slugify(displayName),
       displayName,
+      description: rawGroup.description,
       buckets,
       lowestPercent,
     });
@@ -79,23 +82,28 @@ export function buildSnapshot(
       const label = cfg.label || '';
       if (!label) continue;
 
-      const modelId = cfg.modelOrAlias?.model || label;
+      const modelId = cfg.modelId || cfg.modelOrAlias?.model || label;
       const poolName = inferPoolName(label);
-      const matchingGroup = groups.find((g) =>
-        g.displayName.toLowerCase().includes(poolName.toLowerCase()) ||
-        poolName.toLowerCase().includes(g.displayName.toLowerCase()),
+      const matchingGroup = groups.find(
+        (g) =>
+          g.displayName.toLowerCase().includes(poolName.toLowerCase()) ||
+          poolName.toLowerCase().includes(g.displayName.toLowerCase()),
       );
 
       // Si el modelo no trae remainingFraction directo (p.ej. cuota agotada o delegada al pool),
       // hereda la fracción más restrictiva de su pool.
       let fraction: number | null = null;
-      if (cfg.quotaInfo?.remainingFraction !== undefined && cfg.quotaInfo.remainingFraction !== null) {
+      if (
+        cfg.quotaInfo?.remainingFraction !== undefined &&
+        cfg.quotaInfo.remainingFraction !== null
+      ) {
         fraction = clampFraction(cfg.quotaInfo.remainingFraction);
       } else if (matchingGroup) {
         fraction = clampFraction(matchingGroup.lowestPercent / 100);
       }
 
-      const resetTime = parseResetTime(cfg.quotaInfo?.resetTime) || matchingGroup?.buckets[0]?.resetTime || null;
+      const resetTime =
+        parseResetTime(cfg.quotaInfo?.resetTime) || matchingGroup?.buckets[0]?.resetTime || null;
       const remainingPercent = fraction !== null ? Math.round(fraction * 100) : null;
       const countdown = formatCountdown(undefined, resetTime);
 
@@ -138,6 +146,39 @@ export function buildSnapshot(
     models,
     latencyMs,
   };
+}
+
+/**
+ * Retorna el bucket de 5 horas de un grupo.
+ */
+export function get5hBucket(group: QuotaGroup): QuotaBucket | undefined {
+  return group.buckets.find((b) => b.window === '5h' || b.bucketId?.includes('5h'));
+}
+
+/**
+ * Retorna el bucket semanal de un grupo.
+ */
+export function getWeeklyBucket(group: QuotaGroup): QuotaBucket | undefined {
+  return group.buckets.find((b) => b.window === 'weekly' || b.bucketId?.includes('weekly'));
+}
+
+/**
+ * Retorna el bucket limitante (con menor porcentaje restante) de un grupo.
+ */
+export function getBindingBucket(group: QuotaGroup): QuotaBucket | undefined {
+  if (group.buckets.length === 0) return undefined;
+  return group.buckets.reduce((min, b) => (b.remainingPercent < min.remainingPercent ? b : min));
+}
+
+/**
+ * Formatea el nombre corto de un pool para la barra de estado (ej: "Gemini", "Claude").
+ */
+export function formatPoolShortName(displayName: string): string {
+  const lower = displayName.toLowerCase();
+  if (lower.includes('gemini')) return 'Gemini';
+  if (lower.includes('claude')) return 'Claude';
+  if (lower.includes('gpt')) return 'GPT';
+  return displayName.replace(/\s+models$/i, '').trim();
 }
 
 /**

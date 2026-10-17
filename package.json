@@ -68,6 +68,22 @@
           ],
           "description": "Formato de la barra de estado."
         },
+        "agPro.statusBar.showWindows": {
+          "type": "string",
+          "default": "both",
+          "enum": ["both", "binding"],
+          "enumDescriptions": [
+            "Mostrar ambas ventanas: 5h y semanal (ej: 93%/94%)",
+            "Mostrar únicamente la ventana limitante o menor (ej: 93%)"
+          ],
+          "description": "Determina si se muestran ambas ventanas de cuota o solo la ventana restrictiva en la barra de estado."
+        },
+        "agPro.statusBar.pools": {
+          "type": "array",
+          "default": [],
+          "items": { "type": "string" },
+          "description": "Lista de pools a mostrar en la barra de estado (vacío para mostrar todos los pools disponibles)."
+        },
         "agPro.warningThreshold": {
           "type": "number",
           "default": 30,

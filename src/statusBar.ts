@@ -1,16 +1,27 @@
 /**
- * AG Pro Quota — Barra de Estado
+ * AG Pro Quota — Barra de Estado (v1.1.0)
  *
- * Elemento de la barra de estado con 6 formatos configurables, colores por umbral,
- * tooltip detallado con Markdown, soporte para modelos fijados (pinned)
- * y modo automático (selecciona el modelo de menor cuota restante).
+ * Muestra todos los pools a la vez con sus dos ventanas (5h y semanal).
+ * Opciones configurables:
+ * - statusBar.showWindows: 'both' (5h/semanal) o 'binding' (solo la menor).
+ * - statusBar.pools: lista de pools a mostrar (por defecto todos).
+ * - statusBarFormat: los 6 modos existentes adaptados a múltiples pools.
+ * - Tooltip con detalle completo por pool, hora de reinicio, ventana limitante,
+ *   aviso específico cuando el límite de 5h llega a 0% y lista de modelos del pool.
  */
 
 import * as vscode from 'vscode';
-import type { QuotaSnapshot, AgProConfig, ModelInfo } from './types';
+import type { QuotaSnapshot, AgProConfig, QuotaGroup } from './types';
 import { QuotaLevel } from './types';
 import { t } from './i18n';
-import { getQuotaLevel } from './quotaParser';
+import {
+  getQuotaLevel,
+  get5hBucket,
+  getWeeklyBucket,
+  getBindingBucket,
+  formatPoolShortName,
+} from './quotaParser';
+import { formatStatusBarPoolsText } from './statusBarFormatter';
 
 export class StatusBarManager {
   private item: vscode.StatusBarItem;
@@ -35,26 +46,35 @@ export class StatusBarManager {
       return;
     }
 
-    this.item.backgroundColor = undefined;
+    const groupsToDisplay = this.resolveGroups(snapshot.groups, config);
 
-    // Determinar qué modelo(s) mostrar
-    const displayModels = this.resolveDisplayModels(snapshot, config);
-
-    if (displayModels.length === 0) {
+    if (groupsToDisplay.length === 0) {
       this.item.text = '$(rocket) AG Pro';
+      this.item.backgroundColor = undefined;
       this.item.tooltip = this.buildTooltip(snapshot, config);
       return;
     }
 
-    // Formatear texto de la barra según el modo configurado
-    const parts: string[] = [];
-    for (const m of displayModels) {
-      const pct = m.remainingPercent ?? 0;
-      const text = this.formatText(m.label, pct, config);
-      if (text) parts.push(text);
+    // Calcular el porcentaje más bajo entre todos los pools mostrados
+    const lowestOverall = Math.min(...groupsToDisplay.map((g) => g.lowestPercent));
+    const overallLevel = getQuotaLevel(
+      lowestOverall,
+      config.warningThreshold,
+      config.criticalThreshold,
+    );
+
+    // Ajustar color de fondo del StatusBarItem para situaciones críticas
+    if (overallLevel === QuotaLevel.Depleted || overallLevel === QuotaLevel.Critical) {
+      this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+    } else if (overallLevel === QuotaLevel.Warning) {
+      this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    } else {
+      this.item.backgroundColor = undefined;
     }
 
-    this.item.text = parts.length > 0 ? parts.join(' | ') : '$(rocket) AG Pro';
+    // Formatear texto visible
+    const text = formatStatusBarPoolsText(groupsToDisplay, config);
+    this.item.text = text || '$(rocket) AG Pro';
     this.item.tooltip = this.buildTooltip(snapshot, config);
   }
 
@@ -67,64 +87,105 @@ export class StatusBarManager {
   }
 
   /**
-   * Resuelve qué modelos mostrar: los fijados en la configuración o el de menor cuota (modo auto).
+   * Filtra los grupos según la configuración statusBar.pools.
    */
-  private resolveDisplayModels(snapshot: QuotaSnapshot, config: AgProConfig): ModelInfo[] {
-    const { pinnedModels } = config;
-
-    if (pinnedModels.length > 0) {
-      const pinned = snapshot.models.filter((m) =>
-        pinnedModels.some(
+  private resolveGroups(groups: QuotaGroup[], config: AgProConfig): QuotaGroup[] {
+    if (config.statusBarPools && config.statusBarPools.length > 0) {
+      const filtered = groups.filter((g) =>
+        config.statusBarPools.some(
           (p) =>
-            p.toLowerCase() === m.modelId.toLowerCase() ||
-            p.toLowerCase() === m.label.toLowerCase() ||
-            m.label.toLowerCase().includes(p.toLowerCase()),
+            p.toLowerCase() === g.groupId.toLowerCase() ||
+            p.toLowerCase() === g.displayName.toLowerCase() ||
+            p.toLowerCase() === formatPoolShortName(g.displayName).toLowerCase(),
         ),
       );
-      if (pinned.length > 0) return pinned;
+      if (filtered.length > 0) return filtered;
     }
+    return groups;
+  }
 
-    // Modo automático: modelo con menor cuota
-    if (snapshot.models.length === 0) return [];
+  /**
+   * Construye el tooltip interactivo detallado con ambas ventanas, horas de reinicio,
+   * aviso de 0% de 5h y modelos del pool.
+   */
+  private buildTooltip(snapshot: QuotaSnapshot, config: AgProConfig): vscode.MarkdownString {
+    const md = new vscode.MarkdownString();
+    md.isTrusted = true;
+    md.supportHtml = true;
 
-    let lowest = snapshot.models[0];
-    for (const m of snapshot.models) {
-      const curr = m.remainingPercent ?? 100;
-      const low = lowest.remainingPercent ?? 100;
-      if (curr < low) {
-        lowest = m;
+    const timeStr = snapshot.timestamp.toLocaleTimeString();
+    const statusIcon = snapshot.isConnected ? '🟢' : '🔴';
+
+    md.appendMarkdown(`**$(rocket) ${t('dashboard.title')}**\n\n`);
+    md.appendMarkdown(`*${t('dashboard.lastSync')}: ${timeStr} • ${statusIcon}*\n\n`);
+    md.appendMarkdown('---\n\n');
+
+    for (const group of snapshot.groups) {
+      const shortName = formatPoolShortName(group.displayName);
+      const dot = this.statusDot(group.lowestPercent, config);
+
+      md.appendMarkdown(`### ${dot} **${group.displayName}** (${shortName})\n\n`);
+
+      const b5h = get5hBucket(group);
+      const bWeekly = getWeeklyBucket(group);
+      const binding = getBindingBucket(group);
+
+      // Si el pool está en 0% en la ventana de 5h, avisar expresamente cuándo se libera
+      if (b5h && b5h.remainingPercent <= 0) {
+        const resetAt = b5h.resetTime ? b5h.resetTime.toLocaleTimeString() : '-';
+        md.appendMarkdown(
+          `> ⚠️ **${t('statusBar.fiveHourExhausted', { time: resetAt, countdown: b5h.resetCountdown || 'en breve' })}**\n\n`,
+        );
       }
+
+      // Detalle de ambas ventanas
+      if (b5h) {
+        const isBinding = binding?.window === b5h.window;
+        const bDot = this.statusDot(b5h.remainingPercent, config);
+        const bar = this.progressBar(b5h.remainingPercent);
+        const resetAt = b5h.resetTime ? `(${b5h.resetTime.toLocaleTimeString()})` : '';
+        const tag = isBinding ? ` *[${t('statusBar.bindingNotice')}]*` : '';
+        md.appendMarkdown(
+          `- ${bDot} **${t('dashboard.fiveHour')}**: **${b5h.remainingPercent}%** \`${bar}\` → ${b5h.resetCountdown || '-'} ${resetAt}${tag}\n`,
+        );
+      }
+
+      if (bWeekly) {
+        const isBinding = binding?.window === bWeekly.window;
+        const bDot = this.statusDot(bWeekly.remainingPercent, config);
+        const bar = this.progressBar(bWeekly.remainingPercent);
+        const resetAt = bWeekly.resetTime
+          ? `(${bWeekly.resetTime.toLocaleDateString()} ${bWeekly.resetTime.toLocaleTimeString()})`
+          : '';
+        const tag = isBinding ? ` *[${t('statusBar.bindingNotice')}]*` : '';
+        md.appendMarkdown(
+          `- ${bDot} **${t('dashboard.weekly')}**: **${bWeekly.remainingPercent}%** \`${bar}\` → ${bWeekly.resetCountdown || '-'} ${resetAt}${tag}\n`,
+        );
+      }
+
+      // Modelos del pool
+      const poolModels = snapshot.models.filter(
+        (m) =>
+          m.poolName.toLowerCase() === group.displayName.toLowerCase() ||
+          group.displayName.toLowerCase().includes(m.poolName.toLowerCase()),
+      );
+      if (poolModels.length > 0) {
+        const modelNames = poolModels.map((m) => m.label).join(', ');
+        md.appendMarkdown(`\n*${t('statusBar.poolModels')}: ${modelNames}*\n\n`);
+      } else {
+        md.appendMarkdown('\n');
+      }
+
+      md.appendMarkdown('---\n\n');
     }
-    return [lowest];
+
+    md.appendMarkdown(
+      `[$(refresh) ${t('dashboard.refresh')}](command:agPro.refresh) | [$(dashboard) Dashboard](command:agPro.openDashboard) | [$(settings-gear) ${t('dashboard.settings')}](command:agPro.openSettings)`,
+    );
+
+    return md;
   }
 
-  /**
-   * Formatea el texto visible según el formato configurado.
-   */
-  private formatText(label: string, percent: number, config: AgProConfig): string {
-    const dot = this.statusDot(percent, config);
-    const pct = `${Math.floor(percent)}%`;
-
-    switch (config.statusBarFormat) {
-      case 'icon':
-        return '$(rocket)';
-      case 'dot':
-        return dot;
-      case 'percent':
-        return pct;
-      case 'compact':
-        return `${dot} ${pct}`;
-      case 'namePercent':
-        return `${label}: ${pct}`;
-      case 'standard':
-      default:
-        return `${dot} ${label}: ${pct}`;
-    }
-  }
-
-  /**
-   * Devuelve un indicador de color (emoji) según el nivel de salud de la cuota.
-   */
   private statusDot(percent: number, config: AgProConfig): string {
     const level = getQuotaLevel(percent, config.warningThreshold, config.criticalThreshold);
     switch (level) {
@@ -139,69 +200,6 @@ export class StatusBarManager {
     }
   }
 
-  /**
-   * Construye el tooltip detallado con soporte para Markdown interactivo.
-   */
-  private buildTooltip(snapshot: QuotaSnapshot, config: AgProConfig): vscode.MarkdownString {
-    const md = new vscode.MarkdownString();
-    md.isTrusted = true;
-    md.supportHtml = true;
-
-    const timeStr = snapshot.timestamp.toLocaleTimeString();
-    const statusIcon = snapshot.isConnected ? '🟢' : '🔴';
-
-    md.appendMarkdown(`**$(rocket) ${t('dashboard.title')}**\n\n`);
-    md.appendMarkdown(`*${t('dashboard.lastSync')}: ${timeStr} • ${statusIcon}*\n\n`);
-    md.appendMarkdown('---\n\n');
-
-    // Grupos y buckets de cuota
-    if (snapshot.groups.length > 0) {
-      for (const group of snapshot.groups) {
-        md.appendMarkdown(`**${group.displayName}**\n\n`);
-
-        for (const bucket of group.buckets) {
-          const dot = this.statusDot(bucket.remainingPercent, config);
-          const bar = this.progressBar(bucket.remainingPercent);
-          const windowLabel =
-            bucket.window === 'weekly'
-              ? t('dashboard.weekly')
-              : bucket.window === '5h'
-                ? t('dashboard.fiveHour')
-                : bucket.window;
-
-          md.appendMarkdown(
-            `${dot} ${windowLabel}: **${bucket.remainingPercent}%** \`${bar}\` → ${bucket.resetCountdown || '-'}\n\n`,
-          );
-        }
-      }
-      md.appendMarkdown('---\n\n');
-    }
-
-    // Tabla de modelos individuales
-    if (snapshot.models.length > 0) {
-      md.appendMarkdown(
-        `| ${t('dashboard.model')} | ${t('dashboard.remaining')} | ${t('dashboard.resetIn')} |\n`,
-      );
-      md.appendMarkdown('| :--- | :---: | :--- |\n');
-
-      for (const m of snapshot.models) {
-        const pct = m.remainingPercent !== null ? `${m.remainingPercent}%` : '--%';
-        const dot = m.remainingPercent !== null ? this.statusDot(m.remainingPercent, config) : '⚪';
-        md.appendMarkdown(`| ${dot} ${m.label} | ${pct} | ${m.resetCountdown || '-'} |\n`);
-      }
-    }
-
-    md.appendMarkdown('\n---\n');
-    md.appendMarkdown(
-      `[$(refresh) ${t('dashboard.refresh')}](command:agPro.refresh) | [$(dashboard) Dashboard](command:agPro.openDashboard) | [$(settings-gear) ${t('dashboard.settings')}](command:agPro.openSettings)`,
-    );
-
-    return md;
-  }
-
-  /**
-   * Genera una barra gráfica de texto ASCII.
-   */
   private progressBar(percent: number): string {
     const total = 10;
     const filled = Math.max(0, Math.min(total, Math.round((percent / 100) * total)));

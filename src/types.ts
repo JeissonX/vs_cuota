@@ -1,5 +1,5 @@
 /**
- * AG Pro Quota — Definiciones de tipos (Fase 1)
+ * AG Pro Quota — Definiciones de tipos (v1.1.0)
  */
 
 /** Resultado del descubrimiento del language server */
@@ -11,6 +11,8 @@ export interface ServerConnection {
 
 /** Información de cuota por bucket (ventana temporal) */
 export interface QuotaBucket {
+  bucketId?: string;
+  displayName?: string;
   window: 'weekly' | '5h' | string;
   remainingFraction: number;
   remainingPercent: number;
@@ -23,6 +25,7 @@ export interface QuotaBucket {
 export interface QuotaGroup {
   groupId: string;
   displayName: string;
+  description?: string;
   buckets: QuotaBucket[];
   /** Porcentaje del bucket más restrictivo */
   lowestPercent: number;
@@ -62,10 +65,15 @@ export enum QuotaLevel {
 /** Formatos de barra de estado */
 export type StatusBarFormat = 'icon' | 'dot' | 'percent' | 'compact' | 'namePercent' | 'standard';
 
+/** Modo de visualización de ventanas en la barra de estado */
+export type StatusBarWindowsMode = 'both' | 'binding';
+
 /** Configuración leída de agPro.* */
 export interface AgProConfig {
   refreshIntervalSeconds: number;
   statusBarFormat: StatusBarFormat;
+  statusBarShowWindows: StatusBarWindowsMode;
+  statusBarPools: string[];
   warningThreshold: number;
   criticalThreshold: number;
   language: 'auto' | 'es' | 'en';
@@ -78,15 +86,19 @@ export interface AgProConfig {
 export interface RawQuotaSummaryResponse {
   response?: {
     groups?: RawQuotaGroup[];
+    description?: string;
   };
 }
 
 export interface RawQuotaGroup {
   displayName?: string;
+  description?: string;
   buckets?: RawQuotaBucket[];
 }
 
 export interface RawQuotaBucket {
+  bucketId?: string;
+  displayName?: string;
   window?: string;
   remainingFraction?: number;
   description?: string;
@@ -101,11 +113,17 @@ export interface RawUserStatusResponse {
     cascadeModelConfigData?: {
       clientModelConfigs?: RawClientModelConfig[];
     };
+    userTier?: {
+      id?: string;
+      name?: string;
+      description?: string;
+    };
   };
 }
 
 export interface RawClientModelConfig {
   label?: string;
+  modelId?: string;
   modelOrAlias?: { model?: string };
   quotaInfo?: {
     remainingFraction?: number;
