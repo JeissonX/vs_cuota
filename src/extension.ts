@@ -20,11 +20,15 @@ import { checkAndNotify, resetNotifications } from './notifications';
 import { showDashboard, updateDashboardIfOpen } from './dashboard/dashboardProvider';
 import { showQuickOverview } from './quickPick';
 import { discoverServer } from './discovery';
+import { QuotaHistoryManager } from './historyManager';
+import { auditTokens, type TokenAuditSnapshot } from './phase2/tokenAuditor';
 import type { QuotaSnapshot, AgProConfig } from './types';
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let statusBar: StatusBarManager | null = null;
 let lastSnapshot: QuotaSnapshot | null = null;
+let lastTokenSnapshot: TokenAuditSnapshot | null = null;
+let historyManager: QuotaHistoryManager | null = null;
 let currentConfig: AgProConfig;
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -43,19 +47,34 @@ export function activate(context: vscode.ExtensionContext): void {
   setLanguage(lang);
   logger.info(`Idioma activo: ${lang}`);
 
-  // 4. Barra de estado
+  // 4. Barra de estado e Historial
   statusBar = new StatusBarManager(context);
+  historyManager = new QuotaHistoryManager(context.globalState);
 
   // 5. Registro de comandos
   context.subscriptions.push(
     vscode.commands.registerCommand('agPro.openDashboard', () => {
       if (lastSnapshot) {
-        showDashboard(context, lastSnapshot, currentConfig, () => triggerRefresh());
+        showDashboard(
+          context,
+          lastSnapshot,
+          lastTokenSnapshot,
+          currentConfig,
+          historyManager,
+          () => triggerRefresh(),
+        );
       } else {
         statusBar?.setLoading();
         triggerRefresh().then(() => {
           if (lastSnapshot) {
-            showDashboard(context, lastSnapshot, currentConfig, () => triggerRefresh());
+            showDashboard(
+              context,
+              lastSnapshot,
+              lastTokenSnapshot,
+              currentConfig,
+              historyManager,
+              () => triggerRefresh(),
+            );
           }
         });
       }
@@ -76,11 +95,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand('agPro.quickOverview', () => {
       if (lastSnapshot) {
-        showQuickOverview(lastSnapshot, currentConfig);
+        showQuickOverview(lastSnapshot, currentConfig, lastTokenSnapshot);
       } else {
         triggerRefresh().then(() => {
           if (lastSnapshot) {
-            showQuickOverview(lastSnapshot, currentConfig);
+            showQuickOverview(lastSnapshot, currentConfig, lastTokenSnapshot);
           }
         });
       }
@@ -93,7 +112,7 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.showInformationMessage(t('lang.switched'));
       if (lastSnapshot) {
         statusBar?.update(lastSnapshot, currentConfig);
-        updateDashboardIfOpen(lastSnapshot, currentConfig);
+        updateDashboardIfOpen(lastSnapshot, lastTokenSnapshot, currentConfig, historyManager);
       }
     }),
 
@@ -124,7 +143,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
         if (lastSnapshot) {
           statusBar?.update(lastSnapshot, currentConfig);
-          updateDashboardIfOpen(lastSnapshot, currentConfig);
+          updateDashboardIfOpen(lastSnapshot, lastTokenSnapshot, currentConfig, historyManager);
         }
       }
     }),
@@ -151,21 +170,27 @@ function startRefreshLoop(): void {
 }
 
 /**
- * Ejecuta una actualización completa de cuota contra el Language Server.
+ * Ejecuta una actualización completa de cuota contra el Language Server y auditoría de tokens.
  */
 async function triggerRefresh(): Promise<void> {
   try {
-    const [{ data: quotaRaw, latencyMs }, userStatusRaw] = await Promise.all([
+    const [{ data: quotaRaw, latencyMs }, userStatusRaw, tokenSnapshot] = await Promise.all([
       fetchQuotaSummary(),
       fetchUserStatus(),
+      Promise.resolve().then(() => auditTokens()).catch((err) => {
+        logger.warn(`Error auditando tokens: ${err}`);
+        return null;
+      }),
     ]);
 
     const snapshot = buildSnapshot(quotaRaw, userStatusRaw, latencyMs);
     lastSnapshot = snapshot;
+    lastTokenSnapshot = tokenSnapshot;
 
+    historyManager?.recordSnapshot(snapshot);
     statusBar?.update(snapshot, currentConfig);
     checkAndNotify(snapshot, currentConfig);
-    updateDashboardIfOpen(snapshot, currentConfig);
+    updateDashboardIfOpen(snapshot, lastTokenSnapshot, currentConfig, historyManager);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error(`Error en ciclo de refresco: ${msg}`);

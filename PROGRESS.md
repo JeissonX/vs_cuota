@@ -19,9 +19,9 @@ Este documento registra el progreso secuencial de cada hito de desarrollo para l
 | :--- | :--- | :---: | :--- |
 | **HITO A** | Barra de estado completa (todos los pools, ambas ventanas 5h/semanal, binding vs both, tooltip enriquecido, tests) | ✅ | Commit `c8ece89`. |
 | **HITO B** | Inspección real de datos de tokens (inspección de SQLite en `~/.gemini`, esquema y metadata a `docs/samples/` con REDACTED, sin texto) | ✅ | Commit `2b48b79`. |
-| **HITO C** | Auditor de tokens (`tokenAuditor.ts`: sesión activa incremental, globales, degradación sin node:sqlite, tests unitarios sintéticos) | ✅ | Implementado en `src/phase2/tokenAuditor.ts`, 20 pruebas unitarias pasando. |
-| **HITO D** | Dashboard rico (tarjetas ambas ventanas, tokens activos e históricos por petición, lista de sesiones, historial cuota sparkline, QuickPick) | ⬜ | Siguiente hito. |
-| **HITO E** | Cierre v1.1.0 (actualizar versión, README, CHANGELOG, THIRD_PARTY_NOTICES, generar `.vsix` v1.1.0 e instrucciones) | ⬜ | Pendiente. |
+| **HITO C** | Auditor de tokens (`tokenAuditor.ts`: sesión activa incremental, globales, degradación sin node:sqlite, tests unitarios sintéticos) | ✅ | Commit `4e3f500`. Pruebas con DB sintética y velocidad real verificada. |
+| **HITO D** | Dashboard rico (tarjetas ambas ventanas, tokens activos e históricos por petición, lista de sesiones, historial cuota sparkline, QuickPick) | ✅ | Implementado: Webview con doble ventana, sparklines SVG nativas, tabla de consumo por petición, alternador compacto/exacto, 23 tests en verde. |
+| **HITO E** | Cierre v1.1.0 (actualizar versión, README, CHANGELOG, THIRD_PARTY_NOTICES, generar `.vsix` v1.1.0 e instrucciones) | ⬜ | Siguiente y último hito. |
 
 ---
 *Convención de estados: ⬜ pendiente, ✅ hecho, ⚠️ con problemas.*

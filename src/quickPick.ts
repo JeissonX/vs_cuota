@@ -1,12 +1,14 @@
 /**
- * AG Pro Quota — QuickPick Fallback
+ * AG Pro Quota — QuickPick Fallback (v1.1.0)
  *
  * Muestra una vista interactiva de cuota usando el selector nativo QuickPick de VS Code.
- * Proporciona un respaldo ligero y accesible cuando no se desea abrir el Webview completo.
+ * Proporciona un respaldo ligero y accesible cuando no se desea abrir el Webview completo,
+ * incluyendo información de ambas ventanas por pool y métricas de tokens de la sesión activa.
  */
 
 import * as vscode from 'vscode';
 import type { QuotaSnapshot, AgProConfig } from './types';
+import type { TokenAuditSnapshot } from './phase2/tokenAuditor';
 import { QuotaLevel } from './types';
 import { getQuotaLevel } from './quotaParser';
 import { t } from './i18n';
@@ -14,6 +16,7 @@ import { t } from './i18n';
 export async function showQuickOverview(
   snapshot: QuotaSnapshot,
   config: AgProConfig,
+  tokenSnapshot?: TokenAuditSnapshot | null,
 ): Promise<void> {
   if (!snapshot.isConnected || snapshot.models.length === 0) {
     const action = await vscode.window.showInformationMessage(
@@ -28,26 +31,53 @@ export async function showQuickOverview(
 
   const items: vscode.QuickPickItem[] = [];
 
-  // 1. Pools / Grupos de cuota
+  // 1. Pools / Grupos de cuota con ambas ventanas
   for (const group of snapshot.groups) {
     items.push({
       label: `$(folder) ${group.displayName}`,
       kind: vscode.QuickPickItemKind.Separator,
     });
 
+    let lowestPct = 101;
+    for (const b of group.buckets) {
+      if (b.remainingPercent < lowestPct) lowestPct = b.remainingPercent;
+    }
+
     for (const bucket of group.buckets) {
       const dot = quotaDot(bucket.remainingPercent, config);
+      const isBinding = bucket.remainingPercent === lowestPct;
       const windowLabel =
         bucket.window === 'weekly' ? '7d' : bucket.window === '5h' ? '5h' : bucket.window;
+
+      const bindingTag = isBinding ? ` [★ ${t('dashboard.bindingBadge')}]` : '';
+      const exhaustedNotice =
+        bucket.window === '5h' && bucket.remainingPercent === 0
+          ? ` ⚠️ ${t('statusBar.fiveHourExhausted').replace('{time}', bucket.resetTime ? bucket.resetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '').replace('{countdown}', bucket.resetCountdown || '')}`
+          : '';
+
       items.push({
-        label: `${dot} [${windowLabel}] ${bucket.remainingPercent}%`,
+        label: `${dot} [${windowLabel}] ${bucket.remainingPercent}%${bindingTag}`,
         description: bucket.resetCountdown ? `→ Reinicia en ${bucket.resetCountdown}` : '',
-        detail: bucket.description || undefined,
+        detail: (bucket.description ? `${bucket.description}. ` : '') + exhaustedNotice,
       });
     }
   }
 
-  // 2. Modelos individuales
+  // 2. Tokens de la sesión activa (si están disponibles)
+  if (tokenSnapshot?.activeSession) {
+    const s = tokenSnapshot.activeSession;
+    items.push({
+      label: `$(symbol-variable) ${t('tokens.sessionTitle')}`,
+      kind: vscode.QuickPickItemKind.Separator,
+    });
+    items.push({
+      label: `$(pulse) ${t('tokens.total')}: ${s.totalTokens.toLocaleString()}`,
+      description: `${t('tokens.input')}: ${s.totalPromptTokens.toLocaleString()} · ${t('tokens.output')}: ${s.totalOutputTokens.toLocaleString()}`,
+      detail: `${t('tokens.thought')}: ${s.totalThoughtTokens.toLocaleString()} · ${t('tokens.turns')}: ${s.userTurns} user / ${s.modelTurns} model · Promedio: ${s.averageTokensPerRequest.toLocaleString()} tokens/req`,
+    });
+  }
+
+  // 3. Modelos individuales
   if (snapshot.models.length > 0) {
     items.push({
       label: `$(list-unordered) ${t('dashboard.model')}`,
@@ -65,7 +95,7 @@ export async function showQuickOverview(
     }
   }
 
-  // 3. Acciones rápidas al final
+  // 4. Acciones rápidas al final
   items.push({
     label: '',
     kind: vscode.QuickPickItemKind.Separator,
