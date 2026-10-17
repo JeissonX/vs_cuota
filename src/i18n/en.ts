@@ -71,4 +71,5 @@ export const en = {
   'dashboard.filterAll': 'All',
   'dashboard.filterGemini': 'Gemini / Flash only',
   'dashboard.filterClaude': 'Claude / GPT only',
+  'dashboard.openFull': 'Open in tab',
 } as const;

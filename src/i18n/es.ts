@@ -71,4 +71,5 @@ export const es = {
   'dashboard.filterAll': 'Todos',
   'dashboard.filterGemini': 'Solo Gemini / Flash',
   'dashboard.filterClaude': 'Solo Claude / GPT',
+  'dashboard.openFull': 'Abrir en pestaña',
 } as const;

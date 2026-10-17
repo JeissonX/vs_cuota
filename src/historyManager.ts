@@ -63,7 +63,7 @@ export class QuotaHistoryManager {
    * Obtiene todos los puntos históricos válidos.
    */
   getHistory(): QuotaHistoryPoint[] {
-    return this.globalState.get<QuotaHistoryPoint[]>(HISTORY_KEY, []);
+    return this.globalState.get<QuotaHistoryPoint[]>(HISTORY_KEY, []) ?? [];
   }
 
   /**

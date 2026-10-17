@@ -26,7 +26,90 @@ let latestConfig: AgProConfig | null = null;
 let latestHistoryManager: QuotaHistoryManager | null = null;
 
 /**
- * Abre o enfoca el panel webview del dashboard.
+ * Provider para el Webview registrado en la barra lateral (Activity Bar).
+ */
+export class DashboardViewProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = 'agpro.dashboardView';
+  private _view?: vscode.WebviewView;
+
+  private static currentInstance: DashboardViewProvider | null = null;
+
+  public static get instance(): DashboardViewProvider | null {
+    return DashboardViewProvider.currentInstance;
+  }
+
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly onRefresh: () => void,
+  ) {
+    DashboardViewProvider.currentInstance = this;
+  }
+
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ): void {
+    this._view = webviewView;
+
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.context.extensionUri],
+    };
+
+    this.render();
+
+    webviewView.webview.onDidReceiveMessage((msg: { command: string }) => {
+      switch (msg.command) {
+        case 'refresh':
+          this.onRefresh();
+          break;
+        case 'openSettings':
+          vscode.commands.executeCommand('agPro.openSettings');
+          break;
+        case 'openDashboard':
+        case 'openFullDashboard':
+          vscode.commands.executeCommand('agPro.openDashboard');
+          break;
+      }
+    });
+
+    webviewView.onDidDispose(() => {
+      this._view = undefined;
+    });
+  }
+
+  public render(): void {
+    if (!this._view) return;
+    if (latestSnapshot && latestConfig) {
+      this._view.webview.html = buildHtml(
+        latestSnapshot,
+        latestTokenSnapshot,
+        latestConfig,
+        latestHistoryManager,
+        true,
+      );
+    } else {
+      this._view.webview.html = buildLoadingHtml();
+    }
+  }
+
+  public update(
+    snapshot: QuotaSnapshot,
+    tokenSnapshot: TokenAuditSnapshot | null,
+    config: AgProConfig,
+    historyManager: QuotaHistoryManager | null,
+  ): void {
+    latestSnapshot = snapshot;
+    latestTokenSnapshot = tokenSnapshot;
+    latestConfig = config;
+    latestHistoryManager = historyManager;
+    this.render();
+  }
+}
+
+/**
+ * Abre o enfoca el panel webview del dashboard completo en una pestaña.
  */
 export function showDashboard(
   context: vscode.ExtensionContext,
@@ -57,7 +140,7 @@ export function showDashboard(
     },
   );
 
-  currentPanel.webview.html = buildHtml(snapshot, tokenSnapshot, config, historyManager);
+  currentPanel.webview.html = buildHtml(snapshot, tokenSnapshot, config, historyManager, false);
 
   currentPanel.webview.onDidReceiveMessage(
     (msg: { command: string }) => {
@@ -67,6 +150,10 @@ export function showDashboard(
           break;
         case 'openSettings':
           vscode.commands.executeCommand('agPro.openSettings');
+          break;
+        case 'openDashboard':
+        case 'openFullDashboard':
+          vscode.commands.executeCommand('agPro.openDashboard');
           break;
       }
     },
@@ -80,7 +167,7 @@ export function showDashboard(
 }
 
 /**
- * Actualiza el dashboard si está actualmente abierto y visible.
+ * Actualiza el dashboard si está actualmente abierto y visible (tanto pestaña como sidebar).
  */
 export function updateDashboardIfOpen(
   snapshot: QuotaSnapshot,
@@ -95,6 +182,7 @@ export function updateDashboardIfOpen(
   if (currentPanel) {
     sendUpdate();
   }
+  DashboardViewProvider.instance?.render();
 }
 
 function sendUpdate(): void {
@@ -105,11 +193,38 @@ function sendUpdate(): void {
       latestTokenSnapshot,
       latestConfig,
       latestHistoryManager,
+      false,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.warn(`Error al actualizar vista del dashboard: ${msg}`);
   }
+}
+
+function buildLoadingHtml(): string {
+  const lang = getLanguage();
+  const isEs = lang === 'es';
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: var(--vscode-font-family, 'Segoe UI', sans-serif);
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-editor-background);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 200px; text-align: center; padding: 24px;
+    }
+    .spinner { font-size: 2rem; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="spinner">⏳</div>
+  <div style="font-size: 0.9em; color: var(--vscode-descriptionForeground);">${isEs ? 'Cargando métricas de cuota...' : 'Loading quota metrics...'}</div>
+</body>
+</html>`;
 }
 
 function formatCompact(num: number): string {
@@ -136,6 +251,7 @@ function buildHtml(
   tokenSnapshot: TokenAuditSnapshot | null,
   _config: AgProConfig,
   historyManager: QuotaHistoryManager | null,
+  isSidebar: boolean = false,
 ): string {
   const lang = getLanguage();
   const isEs = lang === 'es';
@@ -624,14 +740,66 @@ function buildHtml(
     .info-banner {
       background: rgba(55, 148, 255, 0.1); border: 1px solid rgba(55, 148, 255, 0.25); color: var(--fg);
     }
+
+    body.is-sidebar {
+      padding: 12px 10px;
+    }
+    body.is-sidebar .header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+    }
+    body.is-sidebar .header h1 {
+      font-size: 1.15em;
+    }
+    body.is-sidebar .header-right {
+      width: 100%;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    body.is-sidebar .cards {
+      grid-template-columns: 1fr;
+    }
+    body.is-sidebar .metrics-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    body.is-sidebar .filter-pills {
+      width: 100%;
+      display: flex;
+    }
+    body.is-sidebar .filter-pill {
+      flex: 1;
+      text-align: center;
+      font-size: 0.8em;
+      padding: 4px 6px;
+    }
+    @media (max-width: 550px) {
+      body { padding: 12px 10px; }
+      .header { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; }
+      .header h1 { font-size: 1.15em; }
+      .header-right { width: 100%; justify-content: flex-start; }
+      .cards { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .filter-pills { width: 100%; justify-content: space-between; }
+      .filter-pill { flex: 1; text-align: center; font-size: 0.8em; padding: 4px 6px; }
+    }
   </style>
 </head>
-<body>
+<body class="${isSidebar ? 'is-sidebar' : ''}">
   <div class="header">
     <h1>🚀 ${t('dashboard.title')}</h1>
     <div class="header-right">
       ${statusBadge}
       <span class="meta">${t('dashboard.lastSync')}: ${lastSync} · ${latency}</span>
+      ${
+        isSidebar
+          ? `<button class="header-btn" onclick="sendMsg('openFullDashboard')" title="${t('dashboard.openFull')}">
+              ↗ ${t('dashboard.openFull')}
+            </button>`
+          : ''
+      }
       <button class="header-btn" id="toggleFormatBtn" onclick="toggleFormat()">
         ${t('tokens.formatExact')}
       </button>

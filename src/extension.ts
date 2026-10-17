@@ -17,7 +17,7 @@ import { StatusBarManager } from './statusBar';
 import { fetchQuotaSummary, fetchUserStatus } from './quotaClient';
 import { buildSnapshot } from './quotaParser';
 import { checkAndNotify, resetNotifications } from './notifications';
-import { showDashboard, updateDashboardIfOpen } from './dashboard/dashboardProvider';
+import { showDashboard, updateDashboardIfOpen, DashboardViewProvider } from './dashboard/dashboardProvider';
 import { showQuickOverview } from './quickPick';
 import { discoverServer } from './discovery';
 import { QuotaHistoryManager } from './historyManager';
@@ -162,7 +162,17 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // 6. Observador de cambios de configuración
+  // 6. Registrar Webview View Provider para la barra lateral (Activity Bar)
+  const dashboardViewProvider = new DashboardViewProvider(context, () => triggerRefresh());
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      DashboardViewProvider.viewType,
+      dashboardViewProvider,
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+  );
+
+  // 7. Observador de cambios de configuración
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('agPro')) {
@@ -186,7 +196,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // 7. Iniciar ciclo de refresco periódico
+  // 8. Iniciar ciclo de refresco periódico
   startRefreshLoop();
   triggerRefresh();
 }

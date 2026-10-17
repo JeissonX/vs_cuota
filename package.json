@@ -9,9 +9,44 @@
     "vscode": "^1.90.0"
   },
   "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:agpro.dashboardView"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agpro-quota-sidebar",
+          "title": "AG Pro Quota",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "agpro-quota-sidebar": [
+        {
+          "type": "webview",
+          "id": "agpro.dashboardView",
+          "name": "Cuota y Métricas"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "agPro.openDashboard",
+          "when": "view == agpro.dashboardView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "agPro.refresh",
+          "when": "view == agpro.dashboardView",
+          "group": "navigation@2"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "agPro.openDashboard",
