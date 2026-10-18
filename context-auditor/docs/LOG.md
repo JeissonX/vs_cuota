@@ -128,3 +128,31 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Ninguna sobre generación de snapshot.
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 4 — Conversación activa.
+
+---
+
+## [2026-10-17 20:23] HITO 4 — Conversación activa
+- **Qué se hizo**:
+  1. Se implementó `src/sessionWatcher.ts` que monitoriza `.db` y `.db-wal` mediante `fs.watch` con debounce de 500 ms y sondeo periódico de respaldo (cada 3.5 segundos con chequeo de foco de ventana).
+  2. Se diseñó el algoritmo de detección de contención en una ventana de 2 segundos (2.000 ms).
+  3. Se implementó la persistencia de sesión fijada en `context.workspaceState` y el selector QuickPick `contextAuditor.selectSession`.
+  4. Se escribieron 3 tests unitarios en `test/sessionWatcher.test.ts` evaluando ordenamiento por mtime/WAL, detección de contención y fijación manual de sesión.
+- **Decisiones y su motivo**:
+  - Desacoplamiento de `vscode` mediante carga dinámica e inyección de `WorkspaceStateStorage` para permitir ejecución pura en el test runner de Node.js sin depender de mocks complejos.
+  - El sondeo de respaldo garantiza robustez en Windows en caso de que `fs.watch` sufra pérdida o retraso de eventos durante operaciones intensivas de SQLite.
+- **Archivos creados/modificados**:
+  - `context-auditor/src/sessionWatcher.ts`
+  - `context-auditor/test/sessionWatcher.test.ts`
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `npx tsc --noEmit` -> Pasó (código 0, sin errores).
+  - Tests: `node --import tsx --test test/**/*.test.ts` -> 21/21 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - La sesión fijada en `workspaceState` invalida con éxito el orden de mtime, permitiendo al usuario auditar una sesión histórica sin interferencias.
+  - La ventana de contención de 2s identifica correctamente escrituras simultáneas en múltiples bases.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Ninguna sobre detección de sesión activa.
+- **Bloqueos**: Ninguno.
+- **Siguiente hito**: Hito 5 — Interfaz y empaquetado.
