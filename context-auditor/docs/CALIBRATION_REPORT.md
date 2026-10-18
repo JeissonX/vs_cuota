@@ -219,4 +219,46 @@ Se calculó la correlación de Pearson entre la duración posterior `(fin - camp
 - **Evidencia**: Si bien la mediana de latencia en Gemini aumenta de 3.20s a 6.56s entre 0 y >200k tokens ($\Delta \approx 3.3$s sobre 200.000 tokens), la tasa de crecimiento es marginal ($\approx 16$ ms por cada 1.000 tokens). La varianza estocástica de red y encolamiento de servidores remotos (con un $p_{90}$ de 10.55s incluso en inputs menores a 50k tokens, y un RMSE residual de 2.91s) supera con creces el efecto del contexto en turnos individuales.
 - Intentar inferir el tamaño o la salud del contexto a partir de la latencia produciría constantes falsos positivos derivados de congestión de red transitoria. El criterio de latencia **debe permanecer DESACTIVADO**.
 
+---
+
+## 9. Hito 9c — Estructura de la Muestra y Sensibilidad de la Propuesta B
+
+### 9.1 Desglose por Conversación y Familia
+
+| Base de Conversación | Familia Principal | Pasos de Inferencia ($n$) | Pico de Input | Input Medio | % de Pasos Familia |
+|---|---|---|---|---|---|
+| `fd98a33c...` | Gemini / Claude | 670 (Gemini) + 18 (Claude) = 688 | 254.936 (Gemini) / 144.852 (Claude) | 131.549 (Gemini) / 92.670 (Claude) | 54.6% Gemini / 100% Claude |
+| `f41cad89...` | Gemini | 245 | 241.064 | 101.244 | 20.0% Gemini |
+| `d36f82f9...` | Gemini | 148 | 182.607 | 87.737 | 12.1% Gemini |
+| `a6b3e179...` | Gemini | 107 | 204.562 | 120.252 | 8.7% Gemini |
+| `6142bf39...` | Gemini | 43 | 65.410 | 42.759 | 3.5% Gemini |
+| `bdcece0c...` | Gemini | 14 | 29.932 | 20.407 | 1.1% Gemini |
+
+### 9.2 Percentiles Ponderados por Conversación vs. por Paso
+
+Al calcular percentiles tratando cada conversación como una unidad (en lugar de ponderar por número de pasos):
+
+- **Gemini (6 conversaciones)**:
+  - Percentiles de **Pico de Input por conversación**:
+    - $p_{50}$ (Mediana de picos): **193.585 tokens**
+    - $p_{75}$: **231.939 tokens**
+    - $p_{90}$: **247.999 tokens**
+    - Máximo: **254.936 tokens**
+  - Percentiles de **Media de Input por conversación**:
+    - $p_{50}$ (Mediana de medias): **94.491 tokens**
+    - $p_{75}$: **115.498 tokens**
+    - $p_{90}$: **125.899 tokens**
+- **Claude (1 conversación)**:
+  - $p_{50} = p_{75} = p_{90} = \text{Pico } 144.852$ tokens / $\text{Media } 92.670$ tokens.
+
+### 9.3 Análisis de Sensibilidad: ¿Cuánto Depende la Propuesta B de 1-2 Sesiones Largas?
+1. **En Gemini**:
+   - Las dos sesiones más extensas (`fd98a33c` con 670 pasos y `f41cad89` con 245 pasos) concentran **915 de los 1.227 pasos (74.6%)** de Gemini.
+   - La Propuesta B ($\Theta_{\text{amarillo}} = 100.000$, $\Theta_{\text{rojo}} = 180.000$) refleja fuertemente la dinámica de trabajo de estas dos sesiones de desarrollo intensivo.
+   - Sin embargo, los percentiles agregados por sesión muestran coherencia estructural: la **mediana de las medias de sesión es de 94.5k tokens** (muy próxima al umbral amarillo de 100k) y la **mediana de picos es de 193.6k tokens** (muy próxima al umbral rojo de 180k). Esto demuestra que los umbrales observados son representativos del ciclo de vida habitual de las sesiones del usuario, no solo de un artefacto de ponderación por pasos.
+2. **En Claude**:
+   - La dependencia es **absoluta (100%)**: los 18 pasos registrados provienen en su totalidad de una única sesión (`fd98a33c`).
+   - Por tanto, la Propuesta B para Claude ($\Theta_{\text{amarillo}} = 115.000$, $\Theta_{\text{rojo}} = 130.000$) no posee significación estadística independiente y debe etiquetarse como provisional y sujeta a calibración conforme se utilicen más conversaciones con modelos Claude.
+
+
 

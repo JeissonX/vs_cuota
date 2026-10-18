@@ -346,6 +346,35 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
 - **Bloqueos**: Ninguno.
 - **Siguiente sub-hito**: Hito 9c — Estructura de la muestra y sensibilidad de la Propuesta B.
 
+---
+
+## [2026-10-18 02:40] HITO 9c — Estructura de la muestra y sensibilidad de la Propuesta B
+- **Qué se hizo**:
+  1. Se desglosaron las 6 bases de datos por conversación: 6 con Gemini (total 1.227 pasos) y 1 con Claude (18 pasos, dentro de la base compartida `fd98a33c`).
+  2. Se extrajo para cada conversación el número de pasos, pico de input y media de input.
+  3. Se calcularon los percentiles ponderados a nivel de conversación: en Gemini, la mediana de picos es de 193.585 tokens y la mediana de medias es de 94.491 tokens.
+  4. Se evaluó la sensibilidad de la Propuesta B:
+     - En Gemini: Las 2 sesiones más largas (`fd98a33c` con 670 pasos y `f41cad89` con 245 pasos) concentran el 74.6% de los pasos. No obstante, los umbrales propuestos (100k/180k) son consistentes con la mediana de medias (94.5k) y de picos (193.6k) calculada tratando a cada conversación como unidad.
+     - En Claude: El 100% de la muestra proviene de una única conversación (18 pasos), por lo que la Propuesta B para Claude (115k/130k) tiene una dependencia total (100%) y carece de significación estadística externa independiente.
+  5. Se documentaron todos los hallazgos en `docs/CALIBRATION_REPORT.md` (Sección 9).
+- **Decisiones y su motivo**:
+  - Transparentar la sobre-representación de sesiones largas para evitar conclusiones prematuras sobre el comportamiento del usuario con otros modelos.
+- **Archivos creados/modificados**:
+  - `context-auditor/docs/CALIBRATION_REPORT.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `tsc --noEmit` -> Pasó (código 0).
+  - Tests: `npm test` -> 23/23 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - Las 2 sesiones más largas representan el 74.6% de los pasos de Gemini.
+  - Claude solo tiene 1 sesión en todo el historial local (`fd98a33c`).
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - El umbral de Claude requerirá recalibración cuando se agreguen al menos 5 conversaciones independientes con dicho proveedor.
+- **Bloqueos**: Ninguno.
+- **Siguiente sub-hito**: Hito 9d — Perfil de umbrales y coherencia semáforo/insignia.
+
+
 
 
 
