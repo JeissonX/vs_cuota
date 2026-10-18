@@ -260,5 +260,61 @@ Al calcular percentiles tratando cada conversación como una unidad (en lugar de
    - La dependencia es **absoluta (100%)**: los 18 pasos registrados provienen en su totalidad de una única sesión (`fd98a33c`).
    - Por tanto, la Propuesta B para Claude ($\Theta_{\text{amarillo}} = 115.000$, $\Theta_{\text{rojo}} = 130.000$) no posee significación estadística independiente y debe etiquetarse como provisional y sujeta a calibración conforme se utilicen más conversaciones con modelos Claude.
 
+---
+
+## 10. Hito 9d — Perfil de Umbrales y Análisis de Coherencia Semáforo vs. Insignia
+
+### 10.1 Perfiles Implementados en Configuración (`contextAuditor.thresholdProfile`)
+Se implementó el selector `contextAuditor.thresholdProfile` con dos opciones:
+1. **`"observed"` (Por defecto - Propuesta B)**:
+   - Gemini: $\Theta_{\text{amarillo}} = 100.000$, $\Theta_{\text{rojo}} = 180.000$ (anclado a $p_{50}$ y $p_{80}$ empírico).
+   - Claude: $\Theta_{\text{amarillo}} = 115.000$, $\Theta_{\text{rojo}} = 130.000$ (anclado a percentiles de la sesión única disponible).
+2. **`"provisional"` (Valores teóricos conservadores iniciales)**:
+   - Gemini: $\Theta_{\text{amarillo}} = 50.000$, $\Theta_{\text{rojo}} = 120.000$.
+   - Claude: $\Theta_{\text{amarillo}} = 20.000$, $\Theta_{\text{rojo}} = 45.000$.
+
+### 10.2 Rotulado Explícito de Bases en la Interfaz de Usuario
+Para evitar confusión conceptual, cada indicador muestra su base formal:
+- **Semáforo**: `"carga relativa a tu historial (p50/p80, 6 conversaciones, 2026-10-18)"` (en modo `observed`) o `"umbrales teóricos iniciales (provisional)"`.
+- **Insignia**: `"ocupación de la ventana del modelo"` (evaluada directamente contra los límites técnicos: 1M para Gemini, 200k para Claude).
+
+### 10.3 Análisis de Rangos Disonantes (Semáforo vs. Insignia)
+Debido a que el Semáforo evalúa la carga histórica relativa y la Insignia evalúa la saturación técnica absoluta de la ventana, existen tramos donde emiten señales divergentes:
+
+#### A. Modelo Claude (Ventana = 200.000 tokens)
+- **Tramo [50.000 – 100.000 tokens]**:
+  - Insignia: **`DENSO`** (ocupación entre 25% y 50% de la ventana).
+  - Semáforo (`observed`): **`GREEN`** ($T_{\text{frescos}} < 115.000$).
+  - *Interpretación*: La ventana del LLM ya tiene una carga considerable, pero para las costumbres observadas de esta sesión intensiva se clasifica como normal.
+- **Tramo [100.000 – 115.000 tokens] — DISONANCIA CRÍTICA INVERTIDA**:
+  - Insignia: **`CRITICO`** (> 50% de la capacidad máxima de Claude).
+  - Semáforo (`observed`): **`GREEN`** ($T_{\text{frescos}} < 115.000$).
+  - *Problema*: La insignia advierte peligro de desborde técnico (>50% de ventana), mientras que el semáforo principal se muestra verde transmitiendo falsa seguridad.
+- **Tramo [115.000 – 130.000 tokens]**:
+  - Insignia: **`CRITICO`** (> 50% de ventana).
+  - Semáforo (`observed`): **`YELLOW`** (alcanza $p_{50}$ empírico).
+
+#### B. Modelo Gemini (Ventana = 1.000.000 tokens)
+- **Tramo [100.000 – 180.000 tokens]**:
+  - Insignia: **`NORMAL`** (ocupación apenas del 10% al 18% de 1M).
+  - Semáforo (`observed`): **`YELLOW`** (supera el $p_{50}$ de sesiones habituales).
+- **Tramo [180.000 – 250.000 tokens]**:
+  - Insignia: **`NORMAL`** (ocupación < 25% de 1M).
+  - Semáforo (`observed`): **`RED`** (supera el $p_{80}$ histórico, ubicándose en el top de sesiones pesadas).
+  - *Interpretación*: Gemini tiene una ventana enorme (1M), por lo que técnicamente nunca está en riesgo de desborde, pero el semáforo alerta que el contexto es excepcionalmente pesado y costoso comparado con el estándar del usuario.
+
+### 10.4 Propuesta de Alineación (Sin Aplicar)
+Para armonizar ambos indicadores sin anular el valor de ninguno:
+1. **Regla de Severidad Acotada para Claude**:
+   - Imponer que el umbral del semáforo nunca sea más laxo que la insignia:
+     $$\Theta_{\text{amarillo, Claude}} \le 0.40 \times \text{Ventana} = 80.000 \text{ tokens}$$
+     $$\Theta_{\text{rojo, Claude}} \le 0.50 \times \text{Ventana} = 100.000 \text{ tokens}$$
+   - Esto evita completamente el falso negativo del tramo [100k, 115k], garantizando que si la Insignia está en `CRITICO`, el Semáforo esté como mínimo en `AMARILLO` o `ROJO`.
+2. **Puntuación Combinada Unificada (Evaluación Bidimensional)**:
+   - Mantener el cálculo del semáforo empírico, pero derivar el estado final mediante una función max:
+     $$\text{EstadoFinal} = \max(\text{SemáforoHistórico}, \text{InsigniaTécnica})$$
+   - De este modo, en Gemini prevalecería la alerta histórica de peso de sesión (evitando lentitud o degradación de calidad), y en Claude prevalecería el límite de saturación de ventana.
+
+
 
 

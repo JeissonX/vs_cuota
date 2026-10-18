@@ -374,6 +374,42 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
 - **Bloqueos**: Ninguno.
 - **Siguiente sub-hito**: Hito 9d — Perfil de umbrales y coherencia semáforo/insignia.
 
+---
+
+## [2026-10-18 02:45] HITO 9d — Perfil de umbrales y coherencia semáforo/insignia
+- **Qué se hizo**:
+  1. Se agregó en `package.json` la propiedad `contextAuditor.thresholdProfile` con enum `["observed", "provisional"]`, por defecto `"observed"`.
+  2. Se definieron en `src/healthEvaluator.ts` las constantes `OBSERVED_THRESHOLDS` (Propuesta B: Gemini 100k/180k, Claude 115k/130k) y `PROVISIONAL_THRESHOLDS` (Gemini 50k/120k, Claude 20k/45k).
+  3. Se rotuló en la UI la base de cada indicador: semáforo = `"carga relativa a tu historial (p50/p80, 6 conversaciones, 2026-10-18)"` (en modo `observed`) o `"umbrales teóricos iniciales (provisional)"`; insignia = `"ocupación de la ventana del modelo"` (actualizados `src/panelHtml.ts`, `src/statusBarController.ts` y `src/diagnosticsFormatter.ts`).
+  4. Se implementaron en `test/healthEvaluator.test.ts` tests de barrido continuo (0 a 250k tokens) sin huecos y con verificación de monotonicidad para ambos perfiles en Gemini y Claude.
+  5. Se documentaron en `docs/CALIBRATION_REPORT.md` (Sección 10) los rangos disonantes (Claude: [50k, 100k] y especialmente [100k, 115k] donde la insignia es CRÍTICA pero el semáforo es VERDE; Gemini: [100k, 250k] donde el semáforo es AMARILLO/ROJO pero la insignia es NORMAL) y se formuló una propuesta de armonización (severidad acotada o estado bidimensional máximo) sin aplicarla.
+- **Decisiones y su motivo**:
+  - Conservar el perfil provisional accesible por configuración para permitir al usuario alternar entre umbrales conservadores teóricos y umbrales basados en su historial real.
+  - No aplicar la alineación de umbrales en código en esta fase para respetar la directiva explícita de "propón una alineación, sin aplicarla".
+- **Archivos creados/modificados**:
+  - `context-auditor/package.json`
+  - `context-auditor/src/types.ts`
+  - `context-auditor/src/healthEvaluator.ts`
+  - `context-auditor/src/extension.ts`
+  - `context-auditor/src/panelHtml.ts`
+  - `context-auditor/src/statusBarController.ts`
+  - `context-auditor/src/diagnosticsFormatter.ts`
+  - `context-auditor/test/healthEvaluator.test.ts`
+  - `context-auditor/docs/CALIBRATION_REPORT.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `tsc --noEmit` -> Pasó (código 0, sin errores).
+  - Tests: `npm test` -> 25/25 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - El barrido continuo demuestra la ausencia total de huecos en ambos perfiles (todo número entero de tokens mapea unívocamente a exactamente un estado válido).
+  - En Claude con perfil `observed`, existe una disonancia crítica invertida en [100k, 115k] (insignia CRÍTICO vs semáforo VERDE).
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Ninguna sobre perfiles de umbrales.
+- **Bloqueos**: Ninguno.
+- **Siguiente sub-hito**: Hito 9e — Detección de modelo robusta.
+
+
 
 
 

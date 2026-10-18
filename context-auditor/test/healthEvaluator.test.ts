@@ -10,6 +10,8 @@ import {
   assessContextHealth,
   resolveModelFamily,
   DEFAULT_HEALTH_CONFIG,
+  OBSERVED_THRESHOLDS,
+  PROVISIONAL_THRESHOLDS,
 } from '../src/healthEvaluator';
 
 test('calculateFreshTokens: cálculo exacto con kCache', () => {
@@ -117,3 +119,71 @@ test('Criterio de latencia: cálculo cuando se activa con coeficientes', () => {
   const assessment = assessContextHealth(usage, 'gemini-3.8-flash', 3000, config);
   assert.equal(assessment.latencyInputMs, 1000);
 });
+
+test('Barrido sin huecos para ambos perfiles (observed y provisional)', () => {
+  const validStates = new Set(['GREEN', 'YELLOW', 'RED']);
+  const severity = { GREEN: 1, YELLOW: 2, RED: 3 };
+
+  const testCases = [
+    { profile: 'observed' as const, family: 'gemini' as const, yellow: OBSERVED_THRESHOLDS.gemini.yellow, red: OBSERVED_THRESHOLDS.gemini.red },
+    { profile: 'observed' as const, family: 'claude' as const, yellow: OBSERVED_THRESHOLDS.claude.yellow, red: OBSERVED_THRESHOLDS.claude.red },
+    { profile: 'provisional' as const, family: 'gemini' as const, yellow: PROVISIONAL_THRESHOLDS.gemini.yellow, red: PROVISIONAL_THRESHOLDS.gemini.red },
+    { profile: 'provisional' as const, family: 'claude' as const, yellow: PROVISIONAL_THRESHOLDS.claude.yellow, red: PROVISIONAL_THRESHOLDS.claude.red },
+  ];
+
+  for (const tc of testCases) {
+    let lastSev = 1;
+    // Barrido continuo de 0 a 250.000 tokens en pasos de 1.000
+    for (let t = 0; t <= 250000; t += 1000) {
+      const state = evaluateTrafficLight(t, tc.yellow, tc.red);
+      assert.ok(validStates.has(state), `Estado ${state} inválido en t=${t}`);
+      const currentSev = severity[state];
+      assert.ok(currentSev >= lastSev, `Violación de monotonicidad en t=${t}: paso de ${lastSev} a ${currentSev}`);
+      lastSev = currentSev;
+    }
+
+    // Puntos de borde exactos
+    assert.equal(evaluateTrafficLight(0, tc.yellow, tc.red), 'GREEN');
+    assert.equal(evaluateTrafficLight(tc.yellow - 1, tc.yellow, tc.red), 'GREEN');
+    assert.equal(evaluateTrafficLight(tc.yellow, tc.yellow, tc.red), 'YELLOW');
+    assert.equal(evaluateTrafficLight(tc.yellow + 1, tc.yellow, tc.red), 'YELLOW');
+    assert.equal(evaluateTrafficLight(tc.red - 1, tc.yellow, tc.red), 'YELLOW');
+    assert.equal(evaluateTrafficLight(tc.red, tc.yellow, tc.red), 'RED');
+    assert.equal(evaluateTrafficLight(tc.red + 1, tc.yellow, tc.red), 'RED');
+  }
+});
+
+test('Evaluación de perfiles observed vs provisional y rotulado de bases', () => {
+  const usageGeminiYellow = { input: 110000, inputNoCache: 110000, cacheRead: 0, output: 100, thoughts: 100 };
+
+  // En perfil observed: Gemini 110k está entre 100k y 180k -> YELLOW
+  const observedHealth = assessContextHealth(
+    usageGeminiYellow,
+    'gemini-3.8-flash',
+    null,
+    { ...DEFAULT_HEALTH_CONFIG, thresholdProfile: 'observed' }
+  );
+  assert.equal(observedHealth.trafficLight, 'YELLOW');
+  assert.equal(observedHealth.trafficLightBasis, 'carga relativa a tu historial (p50/p80, 6 conversaciones, 2026-10-18)');
+  assert.equal(observedHealth.badgeBasis, 'ocupación de la ventana del modelo');
+
+  // En perfil provisional: Gemini 110k está entre 50k y 120k -> YELLOW; pero con 130k es RED
+  const provisionalHealth = assessContextHealth(
+    { input: 130000, inputNoCache: 130000, cacheRead: 0, output: 100, thoughts: 100 },
+    'gemini-3.8-flash',
+    null,
+    { ...DEFAULT_HEALTH_CONFIG, thresholdProfile: 'provisional' }
+  );
+  assert.equal(provisionalHealth.trafficLight, 'RED'); // 130k > 120k en provisional
+  assert.equal(provisionalHealth.trafficLightBasis, 'umbrales teóricos iniciales (provisional)');
+
+  // En perfil observed, 130k para Gemini sigue siendo YELLOW (130k < 180k)
+  const observed130k = assessContextHealth(
+    { input: 130000, inputNoCache: 130000, cacheRead: 0, output: 100, thoughts: 100 },
+    'gemini-3.8-flash',
+    null,
+    { ...DEFAULT_HEALTH_CONFIG, thresholdProfile: 'observed' }
+  );
+  assert.equal(observed130k.trafficLight, 'YELLOW');
+});
+

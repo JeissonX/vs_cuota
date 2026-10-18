@@ -37,6 +37,15 @@
     "configuration": {
       "title": "Context Auditor",
       "properties": {
+        "contextAuditor.thresholdProfile": {
+          "type": "string",
+          "default": "observed",
+          "enum": [
+            "observed",
+            "provisional"
+          ],
+          "description": "Perfil de umbrales del semáforo: 'observed' (p50/p80 de tu historial empírico) o 'provisional' (valores teóricos iniciales)."
+        },
         "contextAuditor.kCache": {
           "type": "number",
           "default": 0.10,

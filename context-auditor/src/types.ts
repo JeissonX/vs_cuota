@@ -37,6 +37,8 @@ export interface HealthAssessment {
   readonly occupancyPercent: number;
   readonly windowLimit: number;
   readonly latencyInputMs?: number | null;
+  readonly trafficLightBasis?: string;
+  readonly badgeBasis?: string;
 }
 
 export interface ToolCallRecord {

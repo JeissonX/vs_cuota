@@ -81,8 +81,8 @@ export function formatDiagnostics(data: DiagnosticsData): string {
     lines.push(`Tokens de salida:   ${u.output.toLocaleString()} tokens`);
     if (data.health) {
       lines.push(`Tokens frescos:     ${data.health.freshTokens.toLocaleString()} tokens (T_frescos con k_cache=${data.config.kCache.toFixed(2)})`);
-      lines.push(`Estado Semáforo:    ${data.health.trafficLight}`);
-      lines.push(`Insignia Ventana:   ${data.health.badge} (${data.health.occupancyPercent}% de ${data.health.windowLimit.toLocaleString()} tokens)`);
+      lines.push(`Estado Semáforo:    ${data.health.trafficLight}${data.health.trafficLightBasis ? ` [${data.health.trafficLightBasis}]` : ''}`);
+      lines.push(`Insignia Ventana:   ${data.health.badge} (${data.health.occupancyPercent}% de ${data.health.windowLimit.toLocaleString()} tokens)${data.health.badgeBasis ? ` [${data.health.badgeBasis}]` : ''}`);
     }
     if (data.lastInference.latencyMs !== null && data.lastInference.latencyMs !== undefined) {
       lines.push(`Latencia observada: ${(data.lastInference.latencyMs / 1000).toFixed(2)} s`);
@@ -104,6 +104,7 @@ export function formatDiagnostics(data: DiagnosticsData): string {
 
   // 6. Configuración Vigente
   lines.push('--- 6. VALORES DE CONFIGURACIÓN VIGENTES ---');
+  lines.push(`thresholdProfile:       ${data.config.thresholdProfile ?? 'observed'}`);
   lines.push(`kCache:                 ${data.config.kCache} (Ponderación de caché)`);
   lines.push(`modelFamily:            ${data.config.modelFamily}`);
   lines.push(`windowGemini:           ${data.config.windowGemini.toLocaleString()} tokens`);

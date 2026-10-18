@@ -290,10 +290,13 @@ export function getWebviewContent(data: PanelRenderData): string {
       <div>
         <div class="traffic-title">${lightText}</div>
         <div class="traffic-desc">${lightDesc}</div>
+        <div style="font-size: 11px; color: var(--vscode-descriptionForeground, #888888); margin-top: 3px;">
+          Base semáforo: <em>${data.health?.trafficLightBasis ?? 'carga relativa a tu historial'}</em>
+        </div>
       </div>
     </div>
     <div class="badge-row">
-      <span>Ocupación de Ventana (${modelName}):</span>
+      <span>${data.health?.badgeBasis ?? 'ocupación de la ventana del modelo'} (${modelName}):</span>
       <span class="badge-pill">${badgeText}</span>
     </div>
   </div>

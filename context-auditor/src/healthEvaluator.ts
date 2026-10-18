@@ -7,9 +7,12 @@
 
 import type { ContextBadgeState, HealthAssessment, TokenUsage, TrafficLightState } from './types';
 
+export type ThresholdProfile = 'provisional' | 'observed';
+
 export interface HealthEvaluatorConfig {
   readonly kCache: number;
   readonly modelFamily: 'auto' | 'gemini' | 'claude';
+  readonly thresholdProfile?: ThresholdProfile;
   readonly windowGemini: number;
   readonly windowClaude: number;
   readonly thresholdGeminiYellow: number;
@@ -21,9 +24,20 @@ export interface HealthEvaluatorConfig {
   readonly betaLatency?: number; // ms por token de pensamiento
 }
 
+export const OBSERVED_THRESHOLDS = {
+  gemini: { yellow: 100000, red: 180000 },
+  claude: { yellow: 115000, red: 130000 },
+} as const;
+
+export const PROVISIONAL_THRESHOLDS = {
+  gemini: { yellow: 50000, red: 120000 },
+  claude: { yellow: 20000, red: 45000 },
+} as const;
+
 export const DEFAULT_HEALTH_CONFIG: HealthEvaluatorConfig = {
   kCache: 0.10,
   modelFamily: 'auto',
+  thresholdProfile: 'observed',
   windowGemini: 1000000,
   windowClaude: 200000,
   thresholdGeminiYellow: 50000,
@@ -83,7 +97,7 @@ export function resolveModelFamily(
   if (familyConfig === 'gemini') return 'gemini';
   if (familyConfig === 'claude') return 'claude';
 
-  if (!modelIdentifier) return 'claude'; // Modelo desconocido usa Claude por especificación
+  if (!modelIdentifier) return 'claude'; // Modelo desconocido usa Claude por especificación conservadora
 
   const lower = modelIdentifier.toLowerCase();
   if (lower.includes('gemini')) return 'gemini';
@@ -152,13 +166,28 @@ export function assessContextHealth(
 ): HealthAssessment {
   const family = resolveModelFamily(config.modelFamily, modelIdentifier);
   const windowLimit = family === 'gemini' ? config.windowGemini : config.windowClaude;
-  const thetaYellow = family === 'gemini' ? config.thresholdGeminiYellow : config.thresholdClaudeYellow;
-  const thetaRed = family === 'gemini' ? config.thresholdGeminiRed : config.thresholdClaudeRed;
+
+  const profile = config.thresholdProfile ?? 'observed';
+  let thetaYellow: number;
+  let thetaRed: number;
+
+  if (profile === 'observed') {
+    thetaYellow = family === 'gemini' ? OBSERVED_THRESHOLDS.gemini.yellow : OBSERVED_THRESHOLDS.claude.yellow;
+    thetaRed = family === 'gemini' ? OBSERVED_THRESHOLDS.gemini.red : OBSERVED_THRESHOLDS.claude.red;
+  } else {
+    thetaYellow = family === 'gemini' ? config.thresholdGeminiYellow : config.thresholdClaudeYellow;
+    thetaRed = family === 'gemini' ? config.thresholdGeminiRed : config.thresholdClaudeRed;
+  }
 
   const freshTokens = calculateFreshTokens(usage.input, usage.cacheRead, config.kCache);
   const trafficLight = evaluateTrafficLight(freshTokens, thetaYellow, thetaRed);
   const badge = evaluateContextBadge(usage.input, windowLimit);
   const occupancyPercent = windowLimit > 0 ? Number(((usage.input / windowLimit) * 100).toFixed(1)) : 0;
+
+  const trafficLightBasis = profile === 'observed'
+    ? 'carga relativa a tu historial (p50/p80, 6 conversaciones, 2026-10-18)'
+    : 'umbrales teóricos iniciales (provisional)';
+  const badgeBasis = 'ocupación de la ventana del modelo';
 
   let latencyInputMs: number | null = null;
   if (config.enableLatencyCriterion && config.alphaLatency !== undefined && config.betaLatency !== undefined) {
@@ -178,5 +207,7 @@ export function assessContextHealth(
     occupancyPercent,
     windowLimit,
     latencyInputMs,
+    trafficLightBasis,
+    badgeBasis,
   };
 }

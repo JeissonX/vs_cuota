@@ -28,6 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
     return {
       kCache: cfg.get<number>('kCache', DEFAULT_HEALTH_CONFIG.kCache),
       modelFamily: cfg.get<'auto' | 'gemini' | 'claude'>('modelFamily', DEFAULT_HEALTH_CONFIG.modelFamily),
+      thresholdProfile: cfg.get<'provisional' | 'observed'>('thresholdProfile', 'observed'),
       windowGemini: cfg.get<number>('windowGemini', DEFAULT_HEALTH_CONFIG.windowGemini),
       windowClaude: cfg.get<number>('windowClaude', DEFAULT_HEALTH_CONFIG.windowClaude),
       thresholdGeminiYellow: cfg.get<number>('thresholdGeminiYellow', DEFAULT_HEALTH_CONFIG.thresholdGeminiYellow),
