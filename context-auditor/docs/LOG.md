@@ -246,3 +246,51 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 8 — Diagnóstico visible y estado honesto.
 
+---
+
+## [2026-10-18 01:58] HITO 8 — Diagnóstico visible y estado honesto
+- **Qué se hizo**:
+  1. Se implementó el formateador puro `src/diagnosticsFormatter.ts` y se escribió su suite de pruebas en `test/diagnosticsFormatter.test.ts` (2 tests, cubriendo reporte completo con sesión activa y degradación elegante sin datos).
+  2. Se registró el comando `contextAuditor.diagnostics` en `src/extension.ts` y `package.json`, emitiendo al OutputChannel "Context Auditor" un informe sanitizado sin prompts que desglosa: entorno Node/Electron, estado de Schema Guard, ID de sesión truncado a 6 caracteres y método de selección, pasos leídos, radiografía de tokens del último paso, T_frescos, semáforo e insignia, familia de modelo detectada y método, y los valores de configuración marcando claramente cuáles son provisionales.
+  3. Se reescribió `docs/STATE.md` clasificando honestamente cada elemento en tres niveles de certeza: `[VERIFICADO CON DATOS REALES]`, `[IMPLEMENTADO + TEST SINTÉTICO]` y `[NO PROBADO EN EL IDE REAL]`. Se incorporaron los detalles faltantes del spike (mapeo de step_type, modelo, timestamps y conversación activa) y se corrigió la instrucción de instalación para usar el panel de Extensiones ("Install from VSIX…") en vez de `code --install-extension`.
+  4. Se actualizó la versión en `package.json` a `0.1.1` y se reempaquetó exitosamente el archivo `context-auditor-0.1.1.vsix` (16.65 KB).
+  5. Se ejecutó la auditoría estricta de seguridad y privacidad S1/S3:
+     - (1) Búsqueda de llamadas a escrituras en `src/` (`writeFile`, `unlink`, `rename`, `rm`, `createWriteStream`, `appendFile`): 0 coincidencias. Ninguna apunta ni interactúa con `~/.gemini`.
+     - (2) Verificación de `DatabaseSync`: 100% de las aperturas en `src/` y `scripts/` contienen `{ readOnly: true }` acompañado de `PRAGMA busy_timeout = 3000;` y `PRAGMA query_only = ON;`.
+     - (3) Lista de contenido real del `.vsix`: exactamente 6 archivos (`[Content_Types].xml`, `extension.vsixmanifest`, `extension/LICENSE.txt`, `extension/package.json`, `extension/readme.md`, `extension/dist/extension.js`). Cero código fuente TypeScript, cero archivos de prueba, cero bases SQLite y cero datos personales.
+     - (4) `git diff --stat 35d0cd5 -- ":(exclude)context-auditor"`: salida vacía (0 cambios fuera de `context-auditor/` respecto a la rama base).
+- **Decisiones y su motivo**:
+  - Exponer el diagnóstico en un OutputChannel nativo (`vscode.window.createOutputChannel`) para que el usuario o agente pueda auditar en cualquier momento la coherencia interna de la extensión sin alterar el estado del Webview.
+  - Transparentar en `STATE.md` que la UI (status bar y webview), los comandos interactivos y la concurrencia real entre ventanas siguen como `[NO PROBADO EN EL IDE REAL]`, distinguiéndolos de la lógica validada con tests sintéticos o los esquemas validados contra bases reales.
+- **Archivos creados/modificados**:
+  - `context-auditor/src/diagnosticsFormatter.ts`
+  - `context-auditor/test/diagnosticsFormatter.test.ts`
+  - `context-auditor/src/extension.ts`
+  - `context-auditor/package.json`
+  - `context-auditor/README.md`
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+  - `context-auditor/context-auditor-0.1.1.vsix` (ignorado en git)
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `tsc --noEmit` -> Pasó (código 0, sin errores).
+  - Tests: `npm test` -> 23/23 tests pasaron (0 fallos).
+  - Empaquetado: `npm run package` -> Pasó (código 0, generado `context-auditor-0.1.1.vsix`).
+- **Hechos nuevos [VERIFICADO]**:
+  - Salida de auditoría S1/S3 completamente limpia: 0 escrituras, 100% de lecturas SQLite con query_only=ON y readOnly=true, VSIX sin fugas de datos y 0 cambios fuera de `context-auditor/`.
+  - El comando `contextAuditor.diagnostics` opera de forma 100% segura y sanitizada.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Comportamiento de renderizado de tooltips y webview en la instancia visual real de Antigravity IDE (queda formalmente marcado como `[NO PROBADO EN EL IDE REAL]`).
+- **Bloqueos**: Ninguno.
+
+---
+
+## RESUMEN DE LA TANDA (HITOS 7 Y 8)
+- **Hitos completados**: Hito 7 (Conciliación de calibración y CALIBRATION_REPORT.md) y Hito 8 (Diagnóstico visible contextAuditor.diagnostics, STATE.md honesto, auditoría S1/S3 y VSIX 0.1.1).
+- **Entregables clave**:
+  - `docs/CALIBRATION_REPORT.md` (análisis cuantitativo multi-modelo).
+  - `docs/STATE.md` (reescrito con 3 niveles de certeza).
+  - `context-auditor-0.1.1.vsix` (paquete VSIX compilado y verificado).
+- **Pruebas automáticas**: 23/23 tests unitarios pasando en verde.
+
+

@@ -64,3 +64,15 @@ Todos los parámetros son configurables desde los ajustes de VS Code (`contextAu
 - `Context Auditor: Copiar Snapshot de Migración` (`contextAuditor.copySnapshot`)
 - `Context Auditor: Seleccionar Sesión Activa` (`contextAuditor.selectSession`)
 - `Context Auditor: Abrir Panel de Contexto` (`contextAuditor.openPanel`)
+- `Context Auditor: Mostrar Diagnóstico` (`contextAuditor.diagnostics`)
+
+---
+
+## Instalación en Antigravity IDE
+
+Debido a que el comando CLI `code` puede apuntar a una instalación externa de VS Code y no a Antigravity:
+1. Abra **Antigravity IDE**.
+2. Abra la vista de Extensiones (`Ctrl+Shift+X` o desde la barra lateral izquierda).
+3. Haga clic en el menú de tres puntos (`...`) en la esquina superior derecha del panel de Extensiones.
+4. Seleccione **"Install from VSIX…"** (*Instalar desde VSIX...*).
+5. Seleccione el archivo `context-auditor-0.1.1.vsix` generado.

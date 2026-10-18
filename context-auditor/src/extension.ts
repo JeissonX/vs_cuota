@@ -11,6 +11,7 @@ import { readSessionContext, readConversationForSnapshot } from './dbReader';
 import { assessContextHealth, type HealthEvaluatorConfig, DEFAULT_HEALTH_CONFIG } from './healthEvaluator';
 import { collectGitInfo, buildMigrationSnapshot, formatMigrationSnapshot } from './snapshotGenerator';
 import { getWebviewContent } from './panelHtml';
+import { formatDiagnostics } from './diagnosticsFormatter';
 import type { HealthAssessment, InferenceStep } from './types';
 
 let currentPanel: vscode.WebviewPanel | undefined = undefined;
@@ -152,6 +153,77 @@ export function activate(context: vscode.ExtensionContext): void {
     refreshActiveSession();
   });
 
+  // 5. Comando: Mostrar Diagnóstico en Output Channel
+  const outputChannel = vscode.window.createOutputChannel('Context Auditor');
+  const diagnosticsCmd = vscode.commands.registerCommand('contextAuditor.diagnostics', () => {
+    const active = watcher.state.activeSession;
+    const cfg = getConfig();
+    const limitSteps = vscode.workspace.getConfiguration('contextAuditor').get<number>('stepsLimit', 200);
+
+    let schemaGuard: import('./types').SchemaGuardResult = {
+      ok: false,
+      statusMessage: 'Sin base de datos activa',
+      missingColumns: [],
+    };
+    let stepsRead = 0;
+    let inference = currentInference;
+    let health = currentHealth;
+
+    if (active) {
+      const sessionRes = readSessionContext(active.dbPath, limitSteps);
+      schemaGuard = sessionRes.guard;
+      stepsRead = sessionRes.totalStepsRead;
+      if (sessionRes.guard.ok) {
+        inference = sessionRes.lastInference;
+        if (inference) {
+          health = assessContextHealth(
+            inference.usage,
+            inference.modelName ?? inference.modelSlug,
+            inference.latencyMs,
+            cfg
+          );
+        }
+      }
+    }
+
+    const selectionMethod = active?.isPinned ? 'pinned' : (active ? 'mtime_auto' : 'none');
+    const rawFamily: 'gemini' | 'claude' | 'unknown' = cfg.modelFamily === 'auto'
+      ? (inference?.modelName?.toLowerCase().includes('gemini') || inference?.modelSlug?.toLowerCase().includes('gemini')
+          ? 'gemini'
+          : (inference?.modelName?.toLowerCase().includes('claude') || inference?.modelSlug?.toLowerCase().includes('claude') ? 'claude' : 'unknown'))
+      : cfg.modelFamily;
+
+    const detectionMethod = cfg.modelFamily !== 'auto'
+      ? `Configuración manual forzada (contextAuditor.modelFamily = ${cfg.modelFamily})`
+      : (inference?.modelId
+          ? `Campo protobuf steps.metadata.9.1 (ID: ${inference.modelId}) conciliado con gen_metadata`
+          : (inference?.modelName || inference?.modelSlug
+              ? `Nombre/slug de modelo reportado (${inference.modelName ?? inference.modelSlug})`
+              : 'Sin datos de modelo en inferencia (fallback a Claude)'));
+
+    const diagText = formatDiagnostics({
+      nodeVersion: process.versions.node,
+      electronVersion: process.versions['electron'],
+      schemaGuard,
+      activeSession: active,
+      selectionMethod,
+      stepsRead,
+      stepsLimit: limitSteps,
+      lastInference: inference,
+      health,
+      detectedFamily: rawFamily,
+      detectionMethod,
+      config: {
+        ...cfg,
+        stepsLimit: limitSteps,
+      },
+    });
+
+    outputChannel.clear();
+    outputChannel.appendLine(diagText);
+    outputChannel.show(true);
+  });
+
   // Escuchar cambios en la configuración
   const configListener = vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration('contextAuditor')) {
@@ -161,10 +233,12 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     statusBar,
+    outputChannel,
     { dispose: () => watcher.stop() },
     copySnapshotCmd,
     selectSessionCmd,
     openPanelCmd,
+    diagnosticsCmd,
     configListener
   );
 
