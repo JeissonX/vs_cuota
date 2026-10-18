@@ -1,0 +1,103 @@
+{
+  "name": "context-auditor",
+  "displayName": "Context Auditor",
+  "description": "Auditor de salud de contexto, semáforo e insignia y snapshot de migración para Antigravity IDE",
+  "version": "0.1.0",
+  "publisher": "agpro",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "contextAuditor.copySnapshot",
+        "title": "Context Auditor: Copiar Snapshot de Migración"
+      },
+      {
+        "command": "contextAuditor.selectSession",
+        "title": "Context Auditor: Seleccionar Sesión Activa"
+      },
+      {
+        "command": "contextAuditor.openPanel",
+        "title": "Context Auditor: Abrir Panel de Contexto"
+      }
+    ],
+    "configuration": {
+      "title": "Context Auditor",
+      "properties": {
+        "contextAuditor.kCache": {
+          "type": "number",
+          "default": 0.10,
+          "description": "Factor de ponderación de tokens leídos de caché (k_cache)."
+        },
+        "contextAuditor.modelFamily": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "gemini",
+            "claude"
+          ],
+          "description": "Familia de modelo para umbrales y tamaño de ventana de contexto."
+        },
+        "contextAuditor.windowGemini": {
+          "type": "number",
+          "default": 1000000,
+          "description": "Tamaño de ventana de contexto para modelos Gemini."
+        },
+        "contextAuditor.windowClaude": {
+          "type": "number",
+          "default": 200000,
+          "description": "Tamaño de ventana de contexto para modelos Claude / Desconocido."
+        },
+        "contextAuditor.thresholdGeminiYellow": {
+          "type": "number",
+          "default": 50000,
+          "description": "Umbral amarillo de tokens frescos para Gemini (a calibrar)."
+        },
+        "contextAuditor.thresholdGeminiRed": {
+          "type": "number",
+          "default": 120000,
+          "description": "Umbral rojo de tokens frescos para Gemini (a calibrar)."
+        },
+        "contextAuditor.thresholdClaudeYellow": {
+          "type": "number",
+          "default": 20000,
+          "description": "Umbral amarillo de tokens frescos para Claude (a calibrar)."
+        },
+        "contextAuditor.thresholdClaudeRed": {
+          "type": "number",
+          "default": 45000,
+          "description": "Umbral rojo de tokens frescos para Claude (a calibrar)."
+        },
+        "contextAuditor.stepsLimit": {
+          "type": "number",
+          "default": 200,
+          "description": "Número máximo de pasos a consultar en SQLite (por defecto 200)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "test": "node --import tsx --test test/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.21.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
