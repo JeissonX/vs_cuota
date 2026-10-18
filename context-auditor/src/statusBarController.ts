@@ -72,7 +72,7 @@ export class StatusBarController {
     md.appendMarkdown(`---\n`);
     md.appendMarkdown(`**Último Paso de Inferencia:**\n`);
     md.appendMarkdown(`- Entrada total: \`${inference.usage.input.toLocaleString()}\`\n`);
-    md.appendMarkdown(`- Leído de caché: \`${inference.usage.cacheRead.toLocaleString()}\`\n`);
+    md.appendMarkdown(`- Leído de caché: \`No disponible localmente\` *(k_cache sin efecto)*\n`);
     md.appendMarkdown(`- Pensamiento: \`${inference.usage.thoughts.toLocaleString()}\`\n`);
     md.appendMarkdown(`- Salida: \`${inference.usage.output.toLocaleString()}\`\n\n`);
     if (inference.latencyMs) {

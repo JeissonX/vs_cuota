@@ -136,3 +136,33 @@ Diseñada a partir de los percentiles empíricos observados por familia:
 | **Vigente (Provisional)**<br>*(Gemini: 50k/120k; Claude: 20k/45k)* | • Muy conservador.<br>• Alerta tempranamente sobre crecimiento de contexto.<br>• Mantiene uniformidad con las especificaciones iniciales. | • Genera fatiga de alertas: 42.5% de pasos de Gemini caen en ROJO pese a que 120k tokens es solo el 12% de su ventana de 1M.<br>• 72.2% de pasos de Claude caen en ROJO. |
 | **Propuesta A (Latencia)** | • Intenta medir la degradación perceptual del usuario en tiempo real. | • **Inviable con datos actuales**: $R^2 < 0.60$, confundiría congestión de red con sobrecarga de contexto. |
 | **Propuesta B (Distribución Empírica)**<br>*(Gemini: 100k/180k; Claude: 115k/130k)* | • Refleja el flujo de trabajo real de un asistente de programación.<br>• Distribución equilibrada (~50% verde, ~32% amarillo, ~18% rojo).<br>• Reserva el estado ROJO para el 20% más pesado de las interacciones. | • Requiere recalibración si el usuario cambia drásticamente su tipo de tareas o tamaño medio de proyectos.<br>• Muestra de Claude aún reducida ($n=18$). |
+
+---
+
+## 7. Hito 9a — Origen de la Caché y Auditoría de Campos Numéricos
+
+### 7.1 Localización en `agpro-quota`
+En `agpro-quota`, el indicador `cacheRatioFormatted` desplegado en el panel (`src/dashboard/dashboardProvider.ts:546`) se calculaba en `src/phase2/tokenAuditor.ts:554`:
+$$\text{cacheRatio} = \frac{\text{totalCache}}{\text{totalPrompt}}$$
+Donde `totalCache` acumulaba el valor de `u.cacheRead` extraído por `decodeTokenUsage` (`src/phase2/protoWire.ts:121`) leyendo el campo `metadata.9.6`.
+
+### 7.2 Comparación Empírica con `metadata.9.6`
+En las 6 bases SQLite de Antigravity inspeccionadas, `metadata.9.6` vale invariablemente:
+- **`24`** para Gemini Flash (ID 1318).
+- **`26`** para Claude Opus (ID 1026).
+Este campo no varía en función del reuso de contexto. Corresponde a un enumerado interno de modelo/estado (e.g. `MODEL_PLACEHOLDER_M24`/`M26`), no a tokens cacheados. Al dividir 24 entre prompts de 100k-250k tokens, `agpro-quota` arrojaba ratios espurios de ~0.01% - 0.02% (o 0% tras redondeo).
+
+### 7.3 Rastreo Exhaustivo de Campos Numéricos en `metadata` y `gen_metadata`
+Se escanearon recursivamente los 38 caminos numéricos existentes en los BLOBs de `metadata` a lo largo de 1.222 pasos de inferencia:
+- `9.5`: Input total bruto (10.902 a 254.936 tokens; correlación 1.000).
+- `9.2`: Pensamiento / Thoughts (702 a 166.321 tokens; correlación -0.050).
+- `9.3`: Output total (11 a 13.139 tokens), coincidente de forma exacta con la suma de `9.9` + `9.10`.
+- `1.1, 6.1, 7.1, 8.1, 26.1.2.1, 32.1`: Timestamps en segundos Unix.
+- `gen_metadata`: Contiene exclusivamente banderas booleanas (`used_claude`, `enable-markdown-agents`) y configuraciones de sesión; cero métricas de tokens.
+Ningún campo numérico almacena tokens leídos de caché ni correlaciona con reuso de prompt.
+
+### 7.4 Conclusión y Propuesta para la UI
+- **Conclusión**: **[NO HAY]** señal local de caché en las bases SQLite locales de Antigravity.
+- **Tratamiento en la UI**: Se rotula explícitamente en el panel y en la status bar como **`Caché: no disponible localmente`**.
+- **Impacto en $k_{\text{cache}}$**: Al no existir señal de caché local (0 tokens detectables), $T_{\text{frescos}} = Input$ y el parámetro $k_{\text{cache}}$ queda temporalmente sin efecto práctico sobre los datos SQLite locales.
+

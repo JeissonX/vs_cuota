@@ -311,8 +311,8 @@ export function getWebviewContent(data: PanelRenderData): string {
         <div class="metric-value">${input}</div>
       </div>
       <div class="metric">
-        <div class="metric-label">Leído de Caché</div>
-        <div class="metric-value" style="color: #58a6ff;">${cache}</div>
+        <div class="metric-label">Caché *(no disp. local)*</div>
+        <div class="metric-value" style="color: #8b949e;" title="Antigravity no expone tokens de caché en su base SQLite local (campo 9.6 fija ${cache} tokens como enum de modelo). k_cache queda sin efecto.">No disponible</div>
       </div>
       <div class="metric">
         <div class="metric-label">Pensamiento / Output</div>

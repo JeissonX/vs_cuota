@@ -293,4 +293,32 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - `context-auditor-0.1.1.vsix` (paquete VSIX compilado y verificado).
 - **Pruebas automáticas**: 23/23 tests unitarios pasando en verde.
 
+---
+
+## [2026-10-18 02:30] HITO 9a — Origen de la caché y auditoría de campos numéricos
+- **Qué se hizo**:
+  1. Se localizó en `agpro-quota` el cálculo de `% de acierto de caché`: procede de `sess.cacheRatioFormatted` (`tokenAuditor.ts:554`), que divide `cached.totalCache / cached.totalPrompt` sumando el campo `metadata.9.6` (`protoWire.ts:121`).
+  2. Se contrastó `metadata.9.6` sobre 1.222 pasos reales: tiene un valor constante de 24 (Gemini) o 26 (Claude), correspondiente a un enumerado de modelo/estado y no a tokens de caché.
+  3. Se inspeccionaron recursivamente los 38 caminos numéricos del BLOB `metadata` y la tabla `gen_metadata`: ninguno varía con reuso de prompt ni almacena tokens de caché.
+  4. Conclusión formal: **[NO HAY]** señal local de caché. Se adaptó la UI (`panelHtml.ts` y `statusBarController.ts`) para rotular explícitamente "Caché: no disponible localmente", dejando $k_{\text{cache}}$ sin efecto práctico sobre las bases locales. Se documentó en `docs/CALIBRATION_REPORT.md` (Sección 7).
+- **Decisiones y su motivo**:
+  - No inventar métricas sustitutas de caché: reportar con honestidad técnica que Antigravity no persiste tokens cacheados en su SQLite local.
+- **Archivos creados/modificados**:
+  - `context-auditor/src/panelHtml.ts`
+  - `context-auditor/src/statusBarController.ts`
+  - `context-auditor/docs/CALIBRATION_REPORT.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `tsc --noEmit` -> Pasó (código 0).
+  - Tests: `npm test` -> 23/23 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - `metadata.9.6` vale exactamente 24 (Gemini) o 26 (Claude); no es lectura de caché.
+  - Ninguno de los 38 campos numéricos de `metadata` representa caché.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Si en versiones futuras de Antigravity IDE se agrega soporte explícito para registrar tokens cacheados en SQLite, la fórmula de $T_{\text{frescos}}$ podrá activarse sin cambios arquitecturales.
+- **Bloqueos**: Ninguno.
+- **Siguiente sub-hito**: Hito 9b — Latencia vs. Input y verificación del campo 6.
+
+
 
