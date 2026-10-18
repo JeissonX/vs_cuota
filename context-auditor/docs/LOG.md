@@ -97,3 +97,34 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Coeficientes de latencia $\alpha$ y $\beta$ quedan pendientes de estimación en el Hito 6.
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 3 — Snapshot determinista.
+
+---
+
+## [2026-10-17 20:20] HITO 3 — Snapshot determinista
+- **Qué se hizo**:
+  1. Se implementó `src/stepExtractor.ts` para extraer texto limpio de prompts de usuario (step 14), respuestas de asistente (step 15) y comandos ejecutados con exit code (step 21), con sanitización de rutas (`~`).
+  2. Se construyó `src/snapshotGenerator.ts` con consultas seguras de git (`execFile` con timeout de 3s), truncado estricto a topes duros y formateador markdown para el portapapeles.
+  3. Se amplió `src/dbReader.ts` con `readConversationForSnapshot` para recuperar turnos relevantes de la base SQLite.
+  4. Se escribieron 5 tests unitarios en `test/snapshotGenerator.test.ts` validando topes duros, fallbacks, extracción de comandos y formateo.
+- **Decisiones y su motivo**:
+  - Inclusión de sección "Últimos Comandos": Habilitada porque el spike confirmó que `step_type = 21` expone el comando y el exit code exacto.
+  - Topes duros implementados: Git resumen (20 líneas / 1.000 chars); `last_assistant` (400 chars finales); `last_user` (300 chars); `first_user` (300 chars iniciales); intermedios (2 x 150 chars); archivos modificados (máx 8); comandos (máx 3).
+  - Sanitización universal de rutas reemplazando directorios de perfil personal por `~`.
+- **Archivos creados/modificados**:
+  - `context-auditor/src/stepExtractor.ts`
+  - `context-auditor/src/snapshotGenerator.ts`
+  - `context-auditor/src/dbReader.ts`
+  - `context-auditor/test/snapshotGenerator.test.ts`
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `npx tsc --noEmit` -> Pasó (código 0, sin errores).
+  - Tests: `node --import tsx --test test/**/*.test.ts` -> 18/18 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - El snapshot se genera en milisegundos de forma 100% determinista sin depender de ninguna llamada a modelos ni incurrir en costos de tokens.
+  - Los topes duros impiden que el snapshot crezca desmesuradamente o degrade el contexto de la nueva conversación.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Ninguna sobre generación de snapshot.
+- **Bloqueos**: Ninguno.
+- **Siguiente hito**: Hito 4 — Conversación activa.

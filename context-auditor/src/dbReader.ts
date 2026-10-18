@@ -232,3 +232,80 @@ function extractGenMetadata(data: Uint8Array): { id?: number; slug: string; name
     return null;
   }
 }
+
+import { extractUserPrompt, extractAssistantReply, extractCommandInfo } from './stepExtractor';
+import type { ConversationTurnInputs } from './snapshotGenerator';
+
+export function readConversationForSnapshot(
+  dbPath: string,
+  limitSteps = 200
+): ConversationTurnInputs {
+  const fallback: ConversationTurnInputs = {
+    userPrompts: [],
+    lastAssistantReply: null,
+    commands: [],
+    touchedFiles: [],
+  };
+
+  let db: DatabaseSync | null = null;
+  try {
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    try {
+      db.exec('PRAGMA busy_timeout = 3000;');
+      db.exec('PRAGMA query_only = ON;');
+    } catch {
+      // Ignorar
+    }
+
+    const guard = validateSchema(db);
+    if (!guard.ok) {
+      db.close();
+      return fallback;
+    }
+
+    const rows = db.prepare(`
+      SELECT idx, step_type, step_payload 
+      FROM steps 
+      WHERE step_type IN (14, 15, 21, 5) AND step_payload IS NOT NULL 
+      ORDER BY idx DESC 
+      LIMIT ?
+    `).all(limitSteps) as { idx: number; step_type: number; step_payload: Uint8Array }[];
+
+    // Invertir para procesar en orden cronológico
+    rows.reverse();
+
+    const userPrompts: string[] = [];
+    let lastAssistantReply: string | null = null;
+    const commands: { command: string; exitCode: number | null }[] = [];
+    const touchedFiles: string[] = [];
+
+    for (const r of rows) {
+      if (!r.step_payload) continue;
+
+      if (r.step_type === 14) {
+        const p = extractUserPrompt(r.step_payload);
+        if (p && p.trim()) userPrompts.push(p.trim());
+      } else if (r.step_type === 15) {
+        const a = extractAssistantReply(r.step_payload);
+        if (a && a.trim()) lastAssistantReply = a.trim();
+      } else if (r.step_type === 21) {
+        const cmd = extractCommandInfo(r.step_payload);
+        if (cmd) commands.push(cmd);
+      }
+    }
+
+    db.close();
+
+    return {
+      userPrompts,
+      lastAssistantReply,
+      commands,
+      touchedFiles,
+    };
+  } catch {
+    if (db) {
+      try { db.close(); } catch { /* ignore */ }
+    }
+    return fallback;
+  }
+}
