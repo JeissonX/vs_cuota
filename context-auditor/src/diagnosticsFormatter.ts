@@ -94,11 +94,19 @@ export function formatDiagnostics(data: DiagnosticsData): string {
 
   // 5. Modelo y Familia
   lines.push('--- 5. MODELO Y FAMILIA DETECTADA ---');
-  const familyLabel = data.detectedFamily === 'unknown' ? 'DESCONOCIDO (Fallback a Claude)' : data.detectedFamily.toUpperCase();
+  let familyLabel: string;
+  if (data.detectedFamily === 'unknown') {
+    const idStr = data.lastInference?.modelId ? ` (ID: ${data.lastInference.modelId})` : '';
+    familyLabel = `MODELO DESCONOCIDO${idStr} [Ventana de seguridad: ${data.config.windowClaude.toLocaleString()} tokens]`;
+  } else {
+    familyLabel = data.detectedFamily.toUpperCase();
+  }
   lines.push(`Familia detectada:  ${familyLabel}`);
   lines.push(`Método detección:   ${data.detectionMethod}`);
-  if (data.lastInference?.modelName || data.lastInference?.modelSlug) {
-    lines.push(`Identificador LLM:  ${data.lastInference.modelName ?? data.lastInference.modelSlug}`);
+  const modelDisplayName = data.health?.modelDisplayName
+    ?? (data.lastInference?.modelId ? `modelo desconocido (ID: ${data.lastInference.modelId})` : (data.lastInference?.modelName ?? data.lastInference?.modelSlug));
+  if (modelDisplayName) {
+    lines.push(`Identificador LLM:  ${modelDisplayName}`);
   }
   lines.push('');
 

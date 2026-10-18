@@ -39,6 +39,8 @@ export interface HealthAssessment {
   readonly latencyInputMs?: number | null;
   readonly trafficLightBasis?: string;
   readonly badgeBasis?: string;
+  readonly detectedFamily?: 'gemini' | 'claude' | 'unknown';
+  readonly modelDisplayName?: string;
 }
 
 export interface ToolCallRecord {

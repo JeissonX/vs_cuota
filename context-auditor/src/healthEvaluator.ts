@@ -87,23 +87,43 @@ export function calibrateKCache(
   };
 }
 
+export type ModelFamily = 'gemini' | 'claude' | 'unknown';
+
 /**
- * Resuelve la familia de modelo efectiva para umbrales y tamaño de ventana
+ * Resuelve la familia de modelo efectiva para umbrales y tamaño de ventana.
+ * Si no coincide con "gemini" o "claude", retorna "unknown" (no clasifica en silencio como Claude).
  */
 export function resolveModelFamily(
   familyConfig: 'auto' | 'gemini' | 'claude',
   modelIdentifier?: string
-): 'gemini' | 'claude' {
+): ModelFamily {
   if (familyConfig === 'gemini') return 'gemini';
   if (familyConfig === 'claude') return 'claude';
 
-  if (!modelIdentifier) return 'claude'; // Modelo desconocido usa Claude por especificación conservadora
+  if (!modelIdentifier) return 'unknown';
 
   const lower = modelIdentifier.toLowerCase();
   if (lower.includes('gemini')) return 'gemini';
   if (lower.includes('claude')) return 'claude';
 
-  return 'claude';
+  return 'unknown';
+}
+
+/**
+ * Formatea el nombre visual del modelo. Si no es reconocido, muestra "modelo desconocido" con su ID.
+ */
+export function formatModelDisplayName(
+  modelIdentifier?: string,
+  modelId?: number
+): string {
+  const family = resolveModelFamily('auto', modelIdentifier);
+  if (family !== 'unknown' && modelIdentifier) {
+    return modelIdentifier;
+  }
+  if (modelId !== undefined) {
+    return `modelo desconocido (ID: ${modelId})`;
+  }
+  return modelIdentifier ? `modelo desconocido (${modelIdentifier})` : 'modelo desconocido';
 }
 
 /**
@@ -162,9 +182,11 @@ export function assessContextHealth(
   usage: TokenUsage,
   modelIdentifier?: string,
   totalLatencyMs?: number | null,
-  config: HealthEvaluatorConfig = DEFAULT_HEALTH_CONFIG
+  config: HealthEvaluatorConfig = DEFAULT_HEALTH_CONFIG,
+  modelId?: number
 ): HealthAssessment {
   const family = resolveModelFamily(config.modelFamily, modelIdentifier);
+  // Para modelos desconocidos se utiliza la ventana de Claude (200k) como guarda conservadora
   const windowLimit = family === 'gemini' ? config.windowGemini : config.windowClaude;
 
   const profile = config.thresholdProfile ?? 'observed';
@@ -200,6 +222,8 @@ export function assessContextHealth(
     );
   }
 
+  const modelDisplayName = formatModelDisplayName(modelIdentifier, modelId);
+
   return {
     freshTokens,
     trafficLight,
@@ -209,5 +233,7 @@ export function assessContextHealth(
     latencyInputMs,
     trafficLightBasis,
     badgeBasis,
+    detectedFamily: family,
+    modelDisplayName,
   };
 }

@@ -226,12 +226,12 @@ async function runCalibration() {
         const tFrescos = tokens.inputNoCache + (0.10 * tokens.cacheRead);
 
         let family = 'unknown';
-        if (tokens.modelId === 1318) family = 'gemini';
-        else if (tokens.modelId === 1026) family = 'claude';
-        else if (tokens.modelId !== null) {
+        if (tokens.modelId !== null) {
           const info = modelCatalog.get(tokens.modelId);
-          if (info?.slug?.includes('claude') || info?.name?.toLowerCase().includes('claude')) family = 'claude';
-          else if (info?.slug?.includes('gemini') || info?.name?.toLowerCase().includes('gemini')) family = 'gemini';
+          const slugLower = (info?.slug ?? '').toLowerCase();
+          const nameLower = (info?.name ?? '').toLowerCase();
+          if (slugLower.includes('gemini') || nameLower.includes('gemini')) family = 'gemini';
+          else if (slugLower.includes('claude') || nameLower.includes('claude')) family = 'claude';
         }
 
         samples.push({

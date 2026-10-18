@@ -409,6 +409,56 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
 - **Bloqueos**: Ninguno.
 - **Siguiente sub-hito**: Hito 9e — Detección de modelo robusta.
 
+---
+
+## [2026-10-18 02:50] HITO 9e — Detección de modelo robusta y empaquetado v0.1.2
+- **Qué se hizo**:
+  1. Se verificó la ausencia de IDs fijos 1318/1026 en el código de producción (`src/`), y se eliminaron de `scripts/calibrate.mjs` sustituyéndolos por lectura del catálogo `gen_metadata` y análisis de subcadenas ("gemini", "claude").
+  2. Se actualizó `resolveModelFamily` para devolver `'gemini' | 'claude' | 'unknown'`: ante modelos no identificados o ausentes, devuelve `'unknown'` y ya NO clasifica en silencio como Claude.
+  3. Se creó `formatModelDisplayName` para rotular de forma transparente como `"modelo desconocido (ID: ...)"` cuando el modelo no es reconocido.
+  4. Se integró la visualización en `src/panelHtml.ts`, `src/statusBarController.ts`, `src/extension.ts` y `src/diagnosticsFormatter.ts`.
+  5. Se implementaron tests sintéticos en `test/healthEvaluator.test.ts` y `test/dbReader.test.ts` validando la lectura dinámica de `gen_metadata` y el tratamiento de IDs desconocidos (7777, 9999) como 'unknown' con formato "modelo desconocido (ID: ...)".
+  6. Se actualizó la versión en `package.json` a `0.1.2` y se reempaquetó exitosamente `context-auditor-0.1.2.vsix` (17.32 KB, 6 archivos).
+- **Decisiones y su motivo**:
+  - Utilizar la ventana de Claude (200k) como guarda de seguridad conservadora para modelos desconocidos (`windowLimit`), pero rotular siempre de forma explícita que la familia es desconocida.
+- **Archivos creados/modificados**:
+  - `context-auditor/scripts/calibrate.mjs`
+  - `context-auditor/src/types.ts`
+  - `context-auditor/src/healthEvaluator.ts`
+  - `context-auditor/src/panelHtml.ts`
+  - `context-auditor/src/statusBarController.ts`
+  - `context-auditor/src/diagnosticsFormatter.ts`
+  - `context-auditor/src/extension.ts`
+  - `context-auditor/test/healthEvaluator.test.ts`
+  - `context-auditor/test/dbReader.test.ts`
+  - `context-auditor/package.json`
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+  - `context-auditor/context-auditor-0.1.2.vsix` (ignorado en git)
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `tsc --noEmit` -> Pasó (código 0, sin errores).
+  - Tests: `npm test` -> 27/27 tests pasaron (0 fallos).
+  - Empaquetado: `npm run package` -> Pasó (código 0, `context-auditor-0.1.2.vsix` generado).
+- **Hechos nuevos [VERIFICADO]**:
+  - Todo modelo no registrado en `gen_metadata` o sin subcadena reconocida se muestra honestamente como "modelo desconocido (ID: ...)" sin fallback silencioso a Claude.
+  - La suite consta de 27 tests unitarios automatizados en verde.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Ninguna sobre detección de modelos.
+- **Bloqueos**: Ninguno.
+
+---
+
+## RESUMEN DE LA TANDA (HITO 9)
+- **Sub-hitos completados**:
+  - 9a: Origen de la caché (`[NO HAY]` señal local de caché; 9.6 es constante enum 24/26; rotulado UI "Caché: no disponible localmente").
+  - 9b: Latencia vs. Input (campo 6 verificado como TTFT, $r > 0.85$ con output; latencia no crece útilmente con input $\approx 16$ ms/1k tokens vs $p_{90} > 10$s; criterio desactivado).
+  - 9c: Estructura de la muestra (sensibilidad evaluada: 2 sesiones concentran 74.6% en Gemini pero coinciden con medianas de sesión; Claude 100% dependiente de 1 sesión).
+  - 9d: Perfil de umbrales `observed` vs `provisional`, rotulado de bases en UI, barrido sin huecos y análisis de rangos disonantes.
+  - 9e: Detección dinámica de modelos en tiempo de ejecución sin IDs fijos, visualización "modelo desconocido (ID: ...)" y empaquetado `context-auditor-0.1.2.vsix`.
+- **Pruebas automáticas**: 27/27 tests unitarios pasando en verde.
+
+
 
 
 

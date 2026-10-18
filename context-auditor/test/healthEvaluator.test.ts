@@ -9,6 +9,7 @@ import {
   calculateInputLatency,
   assessContextHealth,
   resolveModelFamily,
+  formatModelDisplayName,
   DEFAULT_HEALTH_CONFIG,
   OBSERVED_THRESHOLDS,
   PROVISIONAL_THRESHOLDS,
@@ -92,9 +93,17 @@ test('Insignia de Contexto: evaluación por ocupación de ventana', () => {
 test('Resolución de familia de modelo y umbrales correspondientes', () => {
   assert.equal(resolveModelFamily('auto', 'gemini-3.8-flash'), 'gemini');
   assert.equal(resolveModelFamily('auto', 'claude-3-5-sonnet'), 'claude');
-  // Desconocido usa Claude por especificación
-  assert.equal(resolveModelFamily('auto', 'custom-local-model'), 'claude');
-  assert.equal(resolveModelFamily('auto', undefined), 'claude');
+  // Desconocido retorna 'unknown' (no se clasifica en silencio como Claude)
+  assert.equal(resolveModelFamily('auto', 'custom-local-model'), 'unknown');
+  assert.equal(resolveModelFamily('auto', undefined), 'unknown');
+});
+
+test('Formateo de modelo desconocido con ID', () => {
+  assert.equal(formatModelDisplayName(undefined, 9999), 'modelo desconocido (ID: 9999)');
+  assert.equal(formatModelDisplayName('custom-llm', 5555), 'modelo desconocido (ID: 5555)');
+  assert.equal(formatModelDisplayName('gemini-2.5-pro', 1318), 'gemini-2.5-pro');
+  assert.equal(formatModelDisplayName('claude-3-5-sonnet', 1026), 'claude-3-5-sonnet');
+  assert.equal(formatModelDisplayName(undefined, undefined), 'modelo desconocido');
 });
 
 test('Criterio de latencia: desactivado por defecto', () => {

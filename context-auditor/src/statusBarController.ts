@@ -67,6 +67,9 @@ export class StatusBarController {
     md.isTrusted = true;
     md.appendMarkdown(`### Context Auditor — Salud de Contexto\n\n`);
     md.appendMarkdown(`- **Sesión Activa**: \`${session.id}\`${session.isPinned ? ' *(Fijada manualmente)*' : ''}\n`);
+    const modelDisplay = health.modelDisplayName
+      || (inference.modelId ? `modelo desconocido (ID: ${inference.modelId})` : (inference.modelName || inference.modelSlug || 'modelo desconocido'));
+    md.appendMarkdown(`- **Modelo**: \`${modelDisplay}\`\n`);
     md.appendMarkdown(`- **Semáforo**: **${health.trafficLight}** (${health.freshTokens.toLocaleString()} tokens frescos) — *${health.trafficLightBasis ?? 'carga relativa a tu historial'}*\n`);
     md.appendMarkdown(`- **Insignia**: **${health.badge}** (${health.occupancyPercent}% de ventana) — *${health.badgeBasis ?? 'ocupación de la ventana del modelo'}*\n\n`);
     md.appendMarkdown(`---\n`);

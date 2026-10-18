@@ -2,7 +2,7 @@
   "name": "context-auditor",
   "displayName": "Context Auditor",
   "description": "Auditor de salud de contexto, semáforo e insignia y snapshot de migración para Antigravity IDE",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "agpro",
   "license": "MIT",
   "engines": {

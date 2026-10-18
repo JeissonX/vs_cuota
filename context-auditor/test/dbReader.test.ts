@@ -7,6 +7,7 @@ import * as os from 'node:os';
 
 import { validateSchema, readSessionContext, extractStepMetadata } from '../src/dbReader';
 import { decodeTokenUsage } from '../src/vendor/protoWire';
+import { assessContextHealth, resolveModelFamily, formatModelDisplayName } from '../src/healthEvaluator';
 
 function encodeVarint(val: number): Uint8Array {
   const bytes: number[] = [];
@@ -226,3 +227,108 @@ test('Lector SQLite: degrada graciosamente ante archivo inexistente (S4)', () =>
   assert.equal(result.lastInference, null);
   assert.deepEqual(result.recentInferences, []);
 });
+
+test('Detección robusta de modelo desde gen_metadata en tiempo de ejecución (9e)', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ctx-meta-'));
+  const tmpDbPath = path.join(tmpDir, 'test_catalog.db');
+
+  function createSyntheticGenMetadata(id: number, slug: string, name: string): Uint8Array {
+    const inner = concat(
+      encodeVarintField(3, id),
+      encodeLengthDelimited(19, new TextEncoder().encode(slug)),
+      encodeLengthDelimited(21, new TextEncoder().encode(name))
+    );
+    return encodeLengthDelimited(1, inner);
+  }
+
+  const db = new DatabaseSync(tmpDbPath);
+  db.exec(`
+    CREATE TABLE gen_metadata (
+      idx INTEGER PRIMARY KEY,
+      data BLOB
+    );
+    CREATE TABLE steps (
+      idx INTEGER PRIMARY KEY,
+      step_type INTEGER,
+      status INTEGER,
+      metadata BLOB
+    );
+  `);
+
+  // Insertar catálogo de modelos en gen_metadata
+  const genInsert = db.prepare('INSERT INTO gen_metadata (idx, data) VALUES (?, ?)');
+  genInsert.run(1, Buffer.from(createSyntheticGenMetadata(8888, 'gemini-custom-flash', 'Gemini Custom Flash')));
+  genInsert.run(2, Buffer.from(createSyntheticGenMetadata(7777, 'llama-3-local-preview', 'Llama 3 Local')));
+
+  // Insertar pasos con diferentes IDs
+  const metaGemini = createSyntheticMetadata({
+    input: 25000,
+    cache: 1000,
+    thoughts: 500,
+    output: 200,
+    modelCode: 8888,
+  });
+
+  const metaUnknownCatalog = createSyntheticMetadata({
+    input: 30000,
+    cache: 1000,
+    thoughts: 500,
+    output: 200,
+    modelCode: 7777,
+  });
+
+  const metaUnknownNoCatalog = createSyntheticMetadata({
+    input: 35000,
+    cache: 1000,
+    thoughts: 500,
+    output: 200,
+    modelCode: 9999, // No existe en gen_metadata
+  });
+
+  const stepInsert = db.prepare('INSERT INTO steps (idx, step_type, status, metadata) VALUES (?, ?, ?, ?)');
+  stepInsert.run(1, 15, 3, Buffer.from(metaGemini));
+  stepInsert.run(2, 15, 3, Buffer.from(metaUnknownCatalog));
+  stepInsert.run(3, 15, 3, Buffer.from(metaUnknownNoCatalog));
+  db.close();
+
+  const session = readSessionContext(tmpDbPath);
+  assert.equal(session.guard.ok, true);
+  assert.equal(session.recentInferences.length, 3);
+
+  // 1. Paso con 9999 (sin catálogo): modelSlug es undefined
+  const step9999 = session.recentInferences[0]; // idx 3
+  assert.equal(step9999.modelId, 9999);
+  assert.equal(step9999.modelSlug, undefined);
+
+  // 2. Paso con 7777 (en catálogo pero slug sin gemini/claude)
+  const step7777 = session.recentInferences[1]; // idx 2
+  assert.equal(step7777.modelId, 7777);
+  assert.equal(step7777.modelSlug, 'llama-3-local-preview');
+  assert.equal(step7777.modelName, 'Llama 3 Local');
+
+  // 3. Paso con 8888 (en catálogo con slug conteniendo 'gemini')
+  const step8888 = session.recentInferences[2]; // idx 1
+  assert.equal(step8888.modelId, 8888);
+  assert.equal(step8888.modelSlug, 'gemini-custom-flash');
+
+  // 8888 -> Gemini
+  assert.equal(resolveModelFamily('auto', step8888.modelSlug), 'gemini');
+
+  // 7777 -> Unknown (NO Claude)
+  assert.equal(resolveModelFamily('auto', step7777.modelSlug), 'unknown');
+  const health7777 = assessContextHealth(step7777.usage, step7777.modelName, null, undefined, step7777.modelId);
+  assert.equal(health7777.detectedFamily, 'unknown');
+  assert.equal(health7777.modelDisplayName, 'modelo desconocido (ID: 7777)');
+
+  // 9999 -> Unknown (NO Claude)
+  assert.equal(resolveModelFamily('auto', step9999.modelSlug), 'unknown');
+  const health9999 = assessContextHealth(step9999.usage, step9999.modelName, null, undefined, step9999.modelId);
+  assert.equal(health9999.detectedFamily, 'unknown');
+  assert.equal(health9999.modelDisplayName, 'modelo desconocido (ID: 9999)');
+
+  // Limpiar fixture
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  } catch {}
+});
+

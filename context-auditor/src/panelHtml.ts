@@ -30,7 +30,8 @@ export function getWebviewContent(data: PanelRenderData): string {
   const output = usage ? usage.output.toLocaleString() : '--';
   const fresh = data.health ? data.health.freshTokens.toLocaleString() : '--';
   const latency = data.inference?.latencyMs ? `${(data.inference.latencyMs / 1000).toFixed(2)}s` : '--';
-  const modelName = data.inference?.modelName || data.inference?.modelSlug || 'Desconocido';
+  const modelName = data.health?.modelDisplayName
+    || (data.inference?.modelId ? `modelo desconocido (ID: ${data.inference.modelId})` : (data.inference?.modelName || data.inference?.modelSlug || 'modelo desconocido'));
 
   // Semáforo
   let lightColor = '#3fb950'; // green

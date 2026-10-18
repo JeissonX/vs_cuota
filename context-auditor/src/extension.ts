@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 import { SessionWatcher } from './sessionWatcher';
 import { StatusBarController } from './statusBarController';
 import { readSessionContext, readConversationForSnapshot } from './dbReader';
-import { assessContextHealth, type HealthEvaluatorConfig, DEFAULT_HEALTH_CONFIG } from './healthEvaluator';
+import { assessContextHealth, resolveModelFamily, type HealthEvaluatorConfig, DEFAULT_HEALTH_CONFIG } from './healthEvaluator';
 import { collectGitInfo, buildMigrationSnapshot, formatMigrationSnapshot } from './snapshotGenerator';
 import { getWebviewContent } from './panelHtml';
 import { formatDiagnostics } from './diagnosticsFormatter';
@@ -67,7 +67,8 @@ export function activate(context: vscode.ExtensionContext): void {
         currentInference.usage,
         currentInference.modelName ?? currentInference.modelSlug,
         currentInference.latencyMs,
-        cfg
+        cfg,
+        currentInference.modelId
       );
     } else {
       currentHealth = null;
@@ -181,7 +182,8 @@ export function activate(context: vscode.ExtensionContext): void {
             inference.usage,
             inference.modelName ?? inference.modelSlug,
             inference.latencyMs,
-            cfg
+            cfg,
+            inference.modelId
           );
         }
       }
@@ -189,18 +191,18 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const selectionMethod = active?.isPinned ? 'pinned' : (active ? 'mtime_auto' : 'none');
     const rawFamily: 'gemini' | 'claude' | 'unknown' = cfg.modelFamily === 'auto'
-      ? (inference?.modelName?.toLowerCase().includes('gemini') || inference?.modelSlug?.toLowerCase().includes('gemini')
-          ? 'gemini'
-          : (inference?.modelName?.toLowerCase().includes('claude') || inference?.modelSlug?.toLowerCase().includes('claude') ? 'claude' : 'unknown'))
+      ? resolveModelFamily('auto', inference?.modelName ?? inference?.modelSlug)
       : cfg.modelFamily;
 
     const detectionMethod = cfg.modelFamily !== 'auto'
       ? `Configuración manual forzada (contextAuditor.modelFamily = ${cfg.modelFamily})`
-      : (inference?.modelId
-          ? `Campo protobuf steps.metadata.9.1 (ID: ${inference.modelId}) conciliado con gen_metadata`
-          : (inference?.modelName || inference?.modelSlug
-              ? `Nombre/slug de modelo reportado (${inference.modelName ?? inference.modelSlug})`
-              : 'Sin datos de modelo en inferencia (fallback a Claude)'));
+      : (rawFamily !== 'unknown'
+          ? (inference?.modelId
+              ? `Catálogo gen_metadata en tiempo de ejecución (ID: ${inference.modelId}) conciliado por subcadena "${rawFamily}"`
+              : `Subcadena "${rawFamily}" en identificador de modelo (${inference?.modelName ?? inference?.modelSlug})`)
+          : (inference?.modelId
+              ? `Modelo no reconocido en gen_metadata (ID: ${inference.modelId})`
+              : 'Sin datos de modelo identificables (modelo desconocido)'));
 
     const diagText = formatDiagnostics({
       nodeVersion: process.versions.node,
