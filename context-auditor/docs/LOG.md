@@ -156,3 +156,37 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Ninguna sobre detección de sesión activa.
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 5 — Interfaz y empaquetado.
+
+---
+
+## [2026-10-17 20:28] HITO 5 — Interfaz y empaquetado
+- **Qué se hizo**:
+  1. Se diseñó `src/panelHtml.ts` con interfaz moderna para el Webview: radiografía exacta (Input, Cache, Thoughts, Output, Latencia), barra de desglose de tokens, barra de composición estimada (Scenario A: chars/4 normalizado), tarjeta de semáforo con brillo de color, e insignia de ventana.
+  2. Se implementó `src/statusBarController.ts` integrando semáforo en tiempo real, insignia, tokens frescos y tooltip enriquecido en Markdown.
+  3. Se conectaron en `src/extension.ts` los comandos `contextAuditor.copySnapshot`, `contextAuditor.selectSession` y `contextAuditor.openPanel`.
+  4. Se redactó `README.md` documentando el funcionamiento de solo lectura, umbrales y comandos.
+  5. Se creó `.vscodeignore` y `LICENSE` (MIT) y se empaquetó exitosamente la extensión con `npm run package` produciendo `context-auditor-0.1.0.vsix` (14.78 KB).
+- **Decisiones y su motivo**:
+  - Creación de `.vscodeignore` estricto para asegurar que el archivo `.vsix` solo incluya el binario empaquetado `dist/extension.js`, `package.json`, `README.md` y `LICENSE`, excluyendo código fuente, scripts de spike y tests (cumpliendo con la regla de privacidad S3).
+- **Archivos creados/modificados**:
+  - `context-auditor/src/panelHtml.ts`
+  - `context-auditor/src/statusBarController.ts`
+  - `context-auditor/src/extension.ts`
+  - `context-auditor/package.json`
+  - `context-auditor/README.md`
+  - `context-auditor/LICENSE`
+  - `context-auditor/.vscodeignore`
+  - `context-auditor/context-auditor-0.1.0.vsix` (ignorado en git)
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `npm run compile` -> Pasó (código 0).
+  - Typecheck: `npm run typecheck` -> Pasó (código 0).
+  - Tests: `npm test` -> 21/21 tests pasaron (0 fallos).
+  - Empaquetado: `npm run package` -> Pasó (código 0, archivo `context-auditor-0.1.0.vsix` generado).
+- **Hechos nuevos [VERIFICADO]**:
+  - El paquete `.vsix` se genera sin dependencias externas y pesa menos de 15 KB.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Ninguna sobre interfaz ni empaquetado.
+- **Bloqueos**: Ninguno.
+- **Siguiente hito**: Hito 6 (opcional) — Calibración offline.

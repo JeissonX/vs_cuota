@@ -1,0 +1,10 @@
+.vscodeignore
+.gitignore
+spike_result.json
+tsconfig.json
+esbuild.config.mjs
+scripts/**
+test/**
+src/**
+docs/**
+**/*.map
