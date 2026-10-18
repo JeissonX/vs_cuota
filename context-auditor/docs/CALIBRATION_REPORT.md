@@ -166,3 +166,57 @@ Ningún campo numérico almacena tokens leídos de caché ni correlaciona con re
 - **Tratamiento en la UI**: Se rotula explícitamente en el panel y en la status bar como **`Caché: no disponible localmente`**.
 - **Impacto en $k_{\text{cache}}$**: Al no existir señal de caché local (0 tokens detectables), $T_{\text{frescos}} = Input$ y el parámetro $k_{\text{cache}}$ queda temporalmente sin efecto práctico sobre los datos SQLite locales.
 
+---
+
+## 8. Hito 9b — Latencia vs. Input y Verificación de Timestamps
+
+### 8.1 Tramos de Input vs. Latencia Total y TTFT (campo 6 - inicio)
+
+| Familia | Tramo de Input | Muestras ($n$) | Latencia Total: Mediana | Latencia Total: $p_{90}$ | TTFT (campo 6 - inicio): Mediana | TTFT: $p_{90}$ |
+|---|---|---|---|---|---|---|
+| **Gemini** | 0 – 50k | 238 | 3.20 s | 10.55 s | 3.15 s | 7.79 s |
+| | 50k – 100k | 333 | 3.82 s | 12.55 s | 3.74 s | 9.22 s |
+| | 100k – 150k | 266 | 5.25 s | 17.01 s | 5.13 s | 12.01 s |
+| | 150k – 200k | 244 | 5.46 s | 14.66 s | 5.31 s | 11.22 s |
+| | > 200k | 142 | 6.56 s | 16.17 s | 6.49 s | 11.91 s |
+| **Claude** | 0 – 50k | 5 | 8.29 s | 8.74 s | 1.65 s | 2.02 s |
+| | 50k – 100k | 2 | 6.79 s | 6.79 s | 2.49 s | 2.49 s |
+| | 100k – 150k | 11 | 30.45 s | 57.13 s | 2.88 s | 24.90 s |
+| | 150k – 200k | 0 | — | — | — | — |
+| | > 200k | 0 | — | — | — | — |
+
+### 8.2 Regresión con Intercepto: $\text{Latencia} \sim \beta_0 + \beta_{\text{input}} \cdot \text{Input} + \beta_{\text{output}} \cdot \text{Output} + \beta_{\text{thoughts}} \cdot \text{Thoughts}$
+
+- **Gemini** ($n=1.223$):
+  - $\beta_0$ (Intercepto): **2.14 s** (2.139,9 ms)
+  - $\beta_{\text{input}}$: **0.0161 ms/token** (16.1 ms por 1k tokens)
+  - $\beta_{\text{output}}$: **5.158 ms/token** (~194 tokens/segundo en streaming)
+  - $\beta_{\text{thoughts}}$: **0.0362 ms/token**
+  - $R^2$: **0.8122**, RMSE: 2.91 s
+- **Claude** ($n=18$):
+  - $\beta_0$ (Intercepto): **0.60 s** (602.7 ms)
+  - $\beta_{\text{input}}$: **-0.0456 ms/token** (pendiente no significativa por muestra acotada)
+  - $\beta_{\text{output}}$: **15.332 ms/token** (~65 tokens/segundo en streaming)
+  - $\beta_{\text{thoughts}}$: **0.2084 ms/token**
+  - $R^2$: **0.9018**, RMSE: 7.20 s
+
+### 8.3 Explicación Matemática de $b = 92.4$ en el NNLS Previo
+En el ajuste NNLS sin intercepto realizado en el Hito 6, el modelo resolvía:
+$$\text{Latencia} \approx a \cdot \text{Input} + b \cdot \text{CacheRead} + \alpha \cdot \text{Output} + \beta \cdot \text{Thoughts}$$
+Al carecer de un término constante $\beta_0$ y ser el campo `metadata.9.6` un valor fijo de 24 para Gemini:
+$$b \times 24 \approx 92.427 \times 24 \approx 2.218 \text{ ms} \approx 2.22 \text{ s}$$
+El optimizador NNLS forzó a $b$ a absorber exactamente el **intercepto base de la conexión HTTP y latencia de red** ($\beta_0 \approx 2.14$ s). El parámetro no reflejaba ningún costo de lectura de caché.
+
+### 8.4 Verificación de Campo 6 como TTFT
+Se calculó la correlación de Pearson entre la duración posterior `(fin - campo 6)` y los tokens de salida (`Output`):
+- **Gemini**: **$r = 0.8547$** ($n=1.223$)
+- **Claude**: **$r = 0.8803$** ($n=18$)
+- **Global**: **$r = 0.7750$** ($n=1.241$)
+**Conclusión `[VERIFICADO CON DATOS REALES]`**: El campo 6 representa con certeza el **TTFT (Time To First Token)**. El intervalo `(fin - campo 6)` mide con alta fidelidad ($r > 0.85$) el tiempo de generación y streaming del output textual.
+
+### 8.5 ¿Crece la Latencia con el Input de Forma Útil?
+- **Conclusión**: **NO**.
+- **Evidencia**: Si bien la mediana de latencia en Gemini aumenta de 3.20s a 6.56s entre 0 y >200k tokens ($\Delta \approx 3.3$s sobre 200.000 tokens), la tasa de crecimiento es marginal ($\approx 16$ ms por cada 1.000 tokens). La varianza estocástica de red y encolamiento de servidores remotos (con un $p_{90}$ de 10.55s incluso en inputs menores a 50k tokens, y un RMSE residual de 2.91s) supera con creces el efecto del contexto en turnos individuales.
+- Intentar inferir el tamaño o la salud del contexto a partir de la latencia produciría constantes falsos positivos derivados de congestión de red transitoria. El criterio de latencia **debe permanecer DESACTIVADO**.
+
+

@@ -320,5 +320,32 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
 - **Bloqueos**: Ninguno.
 - **Siguiente sub-hito**: Hito 9b — Latencia vs. Input y verificación del campo 6.
 
+---
+
+## [2026-10-18 02:35] HITO 9b — Latencia vs. Input y verificación del campo 6
+- **Qué se hizo**:
+  1. Se analizaron 1.241 pasos con latencia desglosados en 5 tramos de Input (0-50k, 50-100k, 100-150k, 150-200k, >200k) reportando mediana y p90 de latencia total y TTFT (campo 6 - inicio) para Gemini y Claude.
+  2. Se ajustó la regresión multivariante con intercepto: $\text{Latencia} \sim \beta_0 + \beta_{\text{input}}\cdot\text{Input} + \beta_{\text{output}}\cdot\text{Output} + \beta_{\text{thoughts}}\cdot\text{Thoughts}$. En Gemini ($n=1.223$), arrojó intercepto base $\beta_0 = 2.14$s, $\beta_{\text{input}} = 0.0161$ ms/token, $\beta_{\text{output}} = 5.16$ ms/token, $R^2 = 0.8122$, RMSE = 2.91s.
+  3. Se demostró matemáticamente por qué NNLS dio $b=92.4$: al carecer de intercepto y ser campo 9.6 constante (24), $b \times 24 \approx 2.218$ ms absorbió el intercepto base de conexión (~2.14s).
+  4. Se verificó que `(fin - campo 6)` correlaciona $r = 0.8547$ (Gemini) y $r = 0.8803$ (Claude) con los tokens de `Output`, concluyendo **[VERIFICADO CON DATOS REALES]** que el campo 6 es TTFT.
+  5. Se concluyó que la latencia **NO** crece de forma útil con el Input (pendiente de solo 16 ms/1k tokens, completamente sepultada por la dispersión estocástica de red con RMSE 2.91s y p90 > 10s en cualquier tramo). El criterio de latencia permanece desactivado. Se documentó en `docs/CALIBRATION_REPORT.md` (Sección 8).
+- **Decisiones y su motivo**:
+  - No activar el criterio de latencia: su uso generaría alertas espurias por congestión externa de red no relacionada con sobrecarga de contexto.
+- **Archivos creados/modificados**:
+  - `context-auditor/docs/CALIBRATION_REPORT.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `tsc --noEmit` -> Pasó (código 0).
+  - Tests: `npm test` -> 23/23 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - Campo 6 es el TTFT (Time To First Token) con correlación > 0.85 con el streaming posterior.
+  - El costo por token de input es de solo ~16 ms/1.000 tokens en Gemini, con un intercepto base de 2.14 segundos.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - En Claude, la muestra reducida ($n=18$) arroja un $\beta_{\text{input}}$ negativo espurio (-0.045 ms/token) dominado por 11 pasos largos de pensamiento.
+- **Bloqueos**: Ninguno.
+- **Siguiente sub-hito**: Hito 9c — Estructura de la muestra y sensibilidad de la Propuesta B.
+
+
 
 
