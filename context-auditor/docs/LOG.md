@@ -39,3 +39,33 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Fiabilidad de `fs.watch` en Windows durante ráfagas de escritura del WAL (se mitigará con sondeo híbrido de respaldo).
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 1 — Núcleo de lectura (Schema Guard, lector de conversación y extractor de tokens).
+
+---
+
+## [2026-10-17 20:15] HITO 1 — Núcleo de lectura
+- **Qué se hizo**:
+  1. Se implementó `src/types.ts` con definiciones tipadas para `TokenUsage`, `InferenceStep`, `SchemaGuardResult` y estructuras del auditor.
+  2. Se copió y adaptó `protoWire.ts` a `src/vendor/protoWire.ts` con comentario de origen (`src/phase2/protoWire.ts (commit f3bb103c8c8adb3dff3d61ff6aafb000dedcc23b)`).
+  3. Se construyó `src/dbReader.ts` con `validateSchema` (Schema Guard con `PRAGMA table_info(steps)`), `extractStepMetadata` y `readSessionContext` (cumpliendo S1: solo lectura, busy_timeout=3000, query_only=ON).
+  4. Se escribieron 6 tests unitarios en `test/dbReader.test.ts` con fixtures 100% sintéticas creadas en memoria/archivos temporales.
+- **Decisiones y su motivo**:
+  - Uso de `@ts-expect-error` para `node:sqlite` manteniendo compatibilidad con `@types/node` v20 del repositorio padre sin tocar dependencias externas.
+  - El decodificador extrae latencia precisa en milisegundos a partir de los submensajes de timestamp (campos 1 y 7/8).
+- **Archivos creados/modificados**:
+  - `context-auditor/src/types.ts`
+  - `context-auditor/src/vendor/protoWire.ts`
+  - `context-auditor/src/dbReader.ts`
+  - `context-auditor/test/dbReader.test.ts`
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `npx tsc --noEmit` -> Pasó (código 0, sin errores).
+  - Tests: `node --import tsx --test test/**/*.test.ts` -> 6/6 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - Schema Guard detecta correctamente omisión de `metadata`, `idx` o `step_type` y emite el mensaje exacto exigido.
+  - La extracción de tokens y timestamps calcula `latencyMs` exacto y degrada de forma segura ante datos ausentes o corruptos.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Ninguna sobre el núcleo de lectura.
+- **Bloqueos**: Ninguno.
+- **Siguiente hito**: Hito 2 — Semáforo e insignia (funciones puras + configuración).
