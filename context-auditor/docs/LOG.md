@@ -69,3 +69,31 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Ninguna sobre el núcleo de lectura.
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 2 — Semáforo e insignia (funciones puras + configuración).
+
+---
+
+## [2026-10-17 20:17] HITO 2 — Semáforo e insignia (funciones puras + configuración)
+- **Qué se hizo**:
+  1. Se implementó `src/healthEvaluator.ts` con cálculo determinista de $T_{\text{frescos}}$, evaluación de semáforo (ROJO/AMARILLO/VERDE), insignia de ocupación de ventana (CRITICO/DENSO/NORMAL), y calibración matemática con guardas.
+  2. Se implementó la fórmula de criterio por latencia $\Delta t_{\text{input}}$ (desactivada por defecto hasta contar con mediciones empíricas).
+  3. Se crearon 7 tests unitarios en `test/healthEvaluator.test.ts` que demuestran un barrido exhaustivo en todo el dominio sin huecos, pruebas de borde en cada umbral, validación de guardas y resolución de familia de modelo.
+- **Decisiones y su motivo**:
+  - Evaluación secuencial de semáforo sin huecos: ROJO si $T \ge \Theta_{\text{rojo}}$, luego AMARILLO si $T \ge \Theta_{\text{amarillo}}$, sino VERDE.
+  - La insignia se mantiene desacoplada del factor caché para medir fielmente la presión sobre el búfer de contexto según tamaño de ventana (Gemini 1M, Claude 200k).
+  - Guardas estrictas de calibración: si $a \le 10^{-9}$ fallback a 0.10; recorte a $[0, 1]$; confiabilidad restringida a $n \ge 30, R^2 \ge 0.6, a > 0$.
+- **Archivos creados/modificados**:
+  - `context-auditor/src/healthEvaluator.ts`
+  - `context-auditor/test/healthEvaluator.test.ts`
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `npx tsc --noEmit` -> Pasó (código 0, sin errores).
+  - Tests: `node --import tsx --test test/**/*.test.ts` -> 13/13 tests pasaron (0 fallos).
+- **Hechos nuevos [VERIFICADO]**:
+  - Demostrado que cualquier valor de $T_{\text{frescos}}$ cae en exactamente un estado válido del semáforo.
+  - La insignia de ocupación responde exactamente a los umbrales de 25% (Denso) y 50% (Crítico).
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - Coeficientes de latencia $\alpha$ y $\beta$ quedan pendientes de estimación en el Hito 6.
+- **Bloqueos**: Ninguno.
+- **Siguiente hito**: Hito 3 — Snapshot determinista.
