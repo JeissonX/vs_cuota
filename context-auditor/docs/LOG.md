@@ -190,3 +190,38 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Ninguna sobre interfaz ni empaquetado.
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 6 (opcional) — Calibración offline.
+
+---
+
+## [2026-10-17 20:30] HITO 6 — Calibración offline (solo lectura)
+- **Qué se hizo**:
+  1. Se copió `nnls.ts` a `src/vendor/nnls.ts` con comentario de origen (`src/phase2/nnls.ts (commit fbcf77c223a5477d9c6e5e8e82efea12bb649842)`).
+  2. Se programó y ejecutó `scripts/calibrate.mjs` de forma estrictamente pasiva (`DatabaseSync` con `readOnly: true`, `PRAGMA busy_timeout = 3000`, `PRAGMA query_only = ON`).
+  3. Se analizaron 1.129 pasos de inferencia reales a lo largo de las 5 bases de datos locales en `~/.gemini/antigravity-ide/conversations/`.
+  4. Se estimaron empíricamente la distribución de $T_{\text{frescos}}$ (p25=59k, p50=105k, p75=164k, p90=211k), la latencia real por paso (mediana 4.83s, p90 15.31s) y los coeficientes de regresión multivariante ($\alpha \approx 7.062$ ms/token de salida, $\beta \approx 0.086$ ms/token de pensamiento).
+- **Decisiones y su motivo**:
+  - El script no modifica ningún archivo de configuración (`settings.json`) ni bases de datos; solo imprime las sugerencias empíricas por consola, respetando la regla S1.
+- **Archivos creados/modificados**:
+  - `context-auditor/src/vendor/nnls.ts`
+  - `context-auditor/scripts/calibrate.mjs`
+  - `context-auditor/docs/STATE.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `npm run compile` -> Pasó (código 0).
+  - Typecheck: `npm run typecheck` -> Pasó (código 0).
+  - Tests: `npm test` -> 21/21 tests pasaron (0 fallos).
+  - Ejecución de calibración: `node scripts/calibrate.mjs` -> Pasó (código 0).
+- **Hechos nuevos [VERIFICADO]**:
+  - Las bases locales contienen una amplia muestra histórica de 1.129 pasos con timestamps de micro/nanosegundos válidos.
+  - El costo en tiempo de generación es dominado por los tokens de salida (~7.06 ms/token) frente a los tokens de pensamiento (~0.086 ms/token).
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - La estabilidad de $\alpha$ y $\beta$ entre diferentes familias de modelos (Gemini Flash vs Claude 3.5 Sonnet) requerirá clasificar las muestras por modelo si se desea calibración diferenciada por proveedor.
+- **Bloqueos**: Ninguno.
+
+---
+
+## RESUMEN FINAL DEL PROYECTO
+- **Estado general**: 100% completado (Hitos 0, 1, 2, 3, 4, 5 y 6).
+- **Escenario**: Escenario A (alcance completo).
+- **Paquete entregable**: `context-auditor/context-auditor-0.1.0.vsix` (14.78 KB).
+- **Pruebas unitarias**: 21 pruebas automáticas pasando con 0 fallos.
