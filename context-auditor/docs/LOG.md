@@ -218,10 +218,31 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - La estabilidad de $\alpha$ y $\beta$ entre diferentes familias de modelos (Gemini Flash vs Claude 3.5 Sonnet) requerirá clasificar las muestras por modelo si se desea calibración diferenciada por proveedor.
 - **Bloqueos**: Ninguno.
 
----
+## [2026-10-18 01:52] HITO 7 — Conciliación de la calibración (solo lectura, solo agregados)
+- **Qué se hizo**:
+  1. Se extendió `scripts/calibrate.mjs` para clasificar 1.174 pasos de inferencia reales a través de las 6 bases `.db` locales por familia de modelo (Gemini vs Claude vs Desconocido) mediante `steps.metadata.9.1` y la tabla `gen_metadata`.
+  2. Se redactó `docs/CALIBRATION_REPORT.md` respondiendo con precisión cuantitativa y números agregados los puntos 1 a 6 requeridos (percentiles brutos vs T_frescos, determinación de modelo, distribución bajo umbrales vigentes, evaluación NNLS de k_cache, colinealidad/estructura temporal de α y β, y propuesta de umbrales alternativos).
+  3. Se demostró que los 142 pasos con Input > 200.000 (hasta 254k) corresponden al 100% a Gemini Flash (ventana 1M, <25.5% ocupación), mientras que Claude no supera su ventana de 200k (máx 144k).
+  4. Se evaluó formalmente el ajuste NNLS de k_cache (falló isTrustworthy por falta de datos de cuota en SQLite y varianza nula de caché) y se concluyó que el criterio de latencia no es confiable (R²=0.53, RMSE~4.6s, dominado por TTFT de red).
+- **Decisiones y su motivo**:
+  - No alterar los umbrales vigentes, ventanas ni k_cache (0.10) en código ni configuración, respetando la instrucción estricta de no cambiar valores en esta tanda.
+  - Mantener formalmente desactivado el criterio de latencia debido a la falta de fiabilidad estadística y el riesgo de falsos positivos inducidos por fluctuaciones de red.
+- **Archivos creados/modificados**:
+  - `context-auditor/scripts/calibrate.mjs`
+  - `context-auditor/docs/CALIBRATION_REPORT.md`
+  - `context-auditor/docs/LOG.md`
+- **Compilación y tests**:
+  - Compilación: `node esbuild.config.mjs` -> Pasó (código 0).
+  - Typecheck: `tsc --noEmit` -> Pasó (código 0).
+  - Tests: `npm test` -> 21/21 tests pasaron (0 fallos).
+  - Calibración: `node --import tsx scripts/calibrate.mjs` -> Pasó (código 0).
+- **Hechos nuevos [VERIFICADO]**:
+  - Los percentiles previos eran de $T_{\text{frescos}}$, pero son numéricamente casi idénticos al Input bruto (~22 tokens de diferencia) debido a que el campo 9.6 es constante (24/26).
+  - Cero pasos desconocidos entre los 1.174 analizados: 1.156 corresponden a Gemini Flash (ID 1318) y 18 a Claude Opus (ID 1026).
+  - Todos los 142 pasos con Input > 200.000 pertenecen a Gemini (ventana 1M, ninguno en situación crítica).
+  - El tiempo de generación de Gemini Flash está dominado por el TTFT (mediana 4.65s) mientras que la emisión posterior es ultrarrápida (mediana 0.06s), explicando por qué $\beta$ es 76x menor que $\alpha$.
+- **Hipótesis pendientes [HIPÓTESIS]**:
+  - En Claude, la muestra local sigue siendo acotada ($n=18$ pasos), lo que impide ajustes robustos específicos para dicho proveedor hasta acumular más interacciones.
+- **Bloqueos**: Ninguno.
+- **Siguiente hito**: Hito 8 — Diagnóstico visible y estado honesto.
 
-## RESUMEN FINAL DEL PROYECTO
-- **Estado general**: 100% completado (Hitos 0, 1, 2, 3, 4, 5 y 6).
-- **Escenario**: Escenario A (alcance completo).
-- **Paquete entregable**: `context-auditor/context-auditor-0.1.0.vsix` (14.78 KB).
-- **Pruebas unitarias**: 21 pruebas automáticas pasando con 0 fallos.
