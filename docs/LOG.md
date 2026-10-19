@@ -28,3 +28,24 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Rendimiento visual de la barra de estado con dos elementos en Antigravity IDE real.
 - **Bloqueos**: Ninguno.
 - **Siguiente hito**: Hito 2 — Integración de código del auditor en `src/context/`, unificación de vigilante y sondeo, contribución consolidada en `package.json`, dashboard con pestañas y verificación de tests.
+
+---
+
+## [2026-10-18 22:42] HITO 2 — Integración de Context Auditor en agpro-quota
+- **Qué se hizo**:
+  1. Se trasladó el código del auditor a `src/context/` y sus tests a `test/context/`. Se eliminaron las dependencias duplicadas de `vendor/` sustituyéndolas por importaciones directas de los módulos originales (`../phase2/protoWire`, `../phase2/nnls`, `../types`).
+  2. Se conciliaron divergencias en `src/phase2/protoWire.ts` (exportación de `readVarint`, adición de `modelCode` a `TOKEN_FIELD_MAP` de forma retrocompatible) y en `src/phase2/nnls.ts` (guarda para matrices vacías).
+  3. Se unificó la vigilancia de archivos y el sondeo periódico: `SessionWatcher` se configuró con `enableInternalPolling: false` y funge como el único `fs.watch` sobre `~/.gemini/antigravity-ide/conversations`. El bucle en `startRefreshLoop()` de `src/extension.ts` realiza el único sondeo periódico, alimentando tanto cuota como auditor de contexto sin I/O duplicado.
+  4. Se integró `package.json` (v1.3.0) con configuración agrupada en dos esquemas (`AG Pro Quota` y `Context Auditor`), opción `contextAuditor.enabled` (por defecto `true`), y 4 comandos con prefijo propio `contextAuditor.*`.
+  5. Se implementó aislamiento total con `try/catch` en todas las operaciones del auditor, registrando fallos en el OutputChannel sin interrumpir la cuota. Si `contextAuditor.enabled = false`, la barra de estado del auditor se oculta y no se ejecutan lecturas de contexto.
+  6. Se consolidó el Webview Dashboard en `src/dashboard/dashboardProvider.ts` con dos pestañas: `[Cuota]` y `[Salud de sesión y snapshot]`, con persistencia de pestaña activa y sin modificar la lógica ni estilos de cuota.
+  7. Decisión de interfaz: Dos elementos adyacentes en la barra de estado (`StatusBarAlignment.Right, 100` para Cuota y `StatusBarAlignment.Right, 95` para Context Auditor). La cuota mide disponibilidad de recursos cloud; el auditor mide saturación local del prompt de sesión. Clics independientes y ocultamiento condicional limpio.
+- **Compilación y tests**:
+  - `npm run compile`: Build completo sin errores (esbuild).
+  - `npm run lint`: 0 errores, 0 advertencias.
+  - `npm test`: 58/58 tests pasando en verde (31 de cuota + 27 de context auditor).
+- **Decisiones registradas**:
+  - El vigilante de archivos de `tokenAuditor` fue reemplazado por el vigilante unificado `SessionWatcher` en `src/extension.ts`.
+  - Reconciliación de divergencias en `protoWire` retrocompatible.
+- **Siguiente hito**: Hito 3 — Correcciones de honestidad y rotulado (etiquetar porcentaje de caché del dashboard de cuota como "no disponible localmente", sin alterar cálculos ni calibración NNLS).
+

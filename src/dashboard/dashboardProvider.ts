@@ -17,6 +17,8 @@ import type { QuotaSnapshot, AgProConfig } from '../types';
 import type { TokenAuditSnapshot } from '../phase2/tokenAuditor';
 import type { QuotaHistoryManager } from '../historyManager';
 import type { CalibrationManager, CalibrationPoolStatus } from '../phase2/calibrationManager';
+import type { PanelRenderData } from '../context/panelHtml';
+import { getContextTabContentHtml } from '../context/panelHtml';
 import { t, getLanguage } from '../i18n';
 import { logger } from '../logger';
 
@@ -26,6 +28,7 @@ let latestTokenSnapshot: TokenAuditSnapshot | null = null;
 let latestConfig: AgProConfig | null = null;
 let latestHistoryManager: QuotaHistoryManager | null = null;
 let latestCalibrationManager: CalibrationManager | null = null;
+let latestContextData: PanelRenderData | null = null;
 
 /**
  * Provider para el Webview registrado en la barra lateral (Activity Bar).
@@ -73,6 +76,12 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
         case 'openFullDashboard':
           vscode.commands.executeCommand('agPro.openDashboard');
           break;
+        case 'copySnapshot':
+          vscode.commands.executeCommand('contextAuditor.copySnapshot');
+          break;
+        case 'selectSession':
+          vscode.commands.executeCommand('contextAuditor.selectSession');
+          break;
       }
     });
 
@@ -81,7 +90,7 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  public render(): void {
+  public render(initialTab?: 'quota' | 'context'): void {
     if (!this._view) return;
     if (latestSnapshot && latestConfig) {
       this._view.webview.html = buildHtml(
@@ -91,6 +100,8 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
         latestHistoryManager,
         latestCalibrationManager,
         true,
+        latestContextData,
+        initialTab,
       );
     } else {
       this._view.webview.html = buildLoadingHtml();
@@ -103,6 +114,7 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     config: AgProConfig,
     historyManager: QuotaHistoryManager | null,
     calibrationManager?: CalibrationManager | null,
+    contextData?: PanelRenderData | null,
   ): void {
     latestSnapshot = snapshot;
     latestTokenSnapshot = tokenSnapshot;
@@ -110,6 +122,9 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     latestHistoryManager = historyManager;
     if (calibrationManager !== undefined) {
       latestCalibrationManager = calibrationManager;
+    }
+    if (contextData !== undefined) {
+      latestContextData = contextData;
     }
     this.render();
   }
@@ -126,16 +141,21 @@ export function showDashboard(
   historyManager: QuotaHistoryManager | null,
   calibrationManager: CalibrationManager | null,
   onRefresh: () => void,
+  initialTab?: 'quota' | 'context',
+  contextData?: PanelRenderData | null,
 ): void {
   latestSnapshot = snapshot;
   latestTokenSnapshot = tokenSnapshot;
   latestConfig = config;
   latestHistoryManager = historyManager;
   latestCalibrationManager = calibrationManager;
+  if (contextData !== undefined) {
+    latestContextData = contextData;
+  }
 
   if (currentPanel) {
     currentPanel.reveal(vscode.ViewColumn.One);
-    sendUpdate();
+    sendUpdate(initialTab);
     return;
   }
 
@@ -156,6 +176,8 @@ export function showDashboard(
     historyManager,
     calibrationManager,
     false,
+    latestContextData,
+    initialTab,
   );
 
   currentPanel.webview.onDidReceiveMessage(
@@ -170,6 +192,12 @@ export function showDashboard(
         case 'openDashboard':
         case 'openFullDashboard':
           vscode.commands.executeCommand('agPro.openDashboard');
+          break;
+        case 'copySnapshot':
+          vscode.commands.executeCommand('contextAuditor.copySnapshot');
+          break;
+        case 'selectSession':
+          vscode.commands.executeCommand('contextAuditor.selectSession');
           break;
       }
     },
@@ -191,6 +219,7 @@ export function updateDashboardIfOpen(
   config: AgProConfig,
   historyManager: QuotaHistoryManager | null,
   calibrationManager?: CalibrationManager | null,
+  contextData?: PanelRenderData | null,
 ): void {
   latestSnapshot = snapshot;
   latestTokenSnapshot = tokenSnapshot;
@@ -199,13 +228,16 @@ export function updateDashboardIfOpen(
   if (calibrationManager !== undefined) {
     latestCalibrationManager = calibrationManager;
   }
+  if (contextData !== undefined) {
+    latestContextData = contextData;
+  }
   if (currentPanel) {
     sendUpdate();
   }
   DashboardViewProvider.instance?.render();
 }
 
-function sendUpdate(): void {
+function sendUpdate(initialTab?: 'quota' | 'context'): void {
   if (!currentPanel || !latestSnapshot || !latestConfig) return;
   try {
     currentPanel.webview.html = buildHtml(
@@ -215,6 +247,8 @@ function sendUpdate(): void {
       latestHistoryManager,
       latestCalibrationManager,
       false,
+      latestContextData,
+      initialTab,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -274,6 +308,8 @@ function buildHtml(
   historyManager: QuotaHistoryManager | null,
   calibrationManager: CalibrationManager | null = null,
   isSidebar: boolean = false,
+  contextData: PanelRenderData | null = null,
+  initialTab?: 'quota' | 'context',
 ): string {
   const lang = getLanguage();
   const isEs = lang === 'es';
@@ -1027,6 +1063,41 @@ function buildHtml(
       font-size: 0.9em;
     }
     .expensive-session-banner .alert-icon { font-size: 1.3em; }
+
+    /* Pestañas Principales (Cuota vs Salud de Sesión) */
+    .main-tabs-bar {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 18px;
+    }
+    .main-tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-size: 0.95em;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .main-tab-btn:hover {
+      color: var(--fg);
+    }
+    .main-tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .main-tab-content {
+      display: block;
+    }
+    .main-tab-content.is-hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body class="${isSidebar ? 'is-sidebar' : ''}">
@@ -1054,31 +1125,82 @@ function buildHtml(
     </div>
   </div>
 
-  <div class="cards-header">
-    <div class="filter-pills" id="poolFilterPills">
-      <button class="filter-pill active" data-filter="all" onclick="setPoolFilter('all')">
-        ${t('dashboard.filterAll')}
-      </button>
-      <button class="filter-pill" data-filter="gemini" onclick="setPoolFilter('gemini')">
-        ${t('dashboard.filterGemini')}
-      </button>
-      <button class="filter-pill" data-filter="claude" onclick="setPoolFilter('claude')">
-        ${t('dashboard.filterClaude')}
-      </button>
-    </div>
+  <div class="main-tabs-bar">
+    <button class="main-tab-btn active" id="tabBtnQuota" onclick="switchMainTab('quota')">
+      📊 ${isEs ? 'Cuota' : 'Quota'}
+    </button>
+    <button class="main-tab-btn" id="tabBtnContext" onclick="switchMainTab('context')">
+      🩺 ${isEs ? 'Salud de sesión y snapshot' : 'Session Health & Snapshot'}
+    </button>
   </div>
 
-  <div class="cards">${groupCards}</div>
+  <div id="tabContentQuota" class="main-tab-content">
+    <div class="cards-header">
+      <div class="filter-pills" id="poolFilterPills">
+        <button class="filter-pill active" data-filter="all" onclick="setPoolFilter('all')">
+          ${t('dashboard.filterAll')}
+        </button>
+        <button class="filter-pill" data-filter="gemini" onclick="setPoolFilter('gemini')">
+          ${t('dashboard.filterGemini')}
+        </button>
+        <button class="filter-pill" data-filter="claude" onclick="setPoolFilter('claude')">
+          ${t('dashboard.filterClaude')}
+        </button>
+      </div>
+    </div>
 
-  ${calibrationSection}
+    <div class="cards">${groupCards}</div>
 
-  ${sessionTokensHtml}
+    ${calibrationSection}
 
-  ${globalSectionHtml}
+    ${sessionTokensHtml}
+
+    ${globalSectionHtml}
+  </div>
+
+  <div id="tabContentContext" class="main-tab-content is-hidden">
+    ${contextData ? getContextTabContentHtml(contextData) : `<div style="padding: 24px; text-align: center; color: var(--muted);">${isEs ? 'Auditor de contexto no disponible o sin datos de sesión activa.' : 'Context auditor not available or no active session data.'}</div>`}
+  </div>
 
   <script>
     const vscode = acquireVsCodeApi();
     function sendMsg(command) { vscode.postMessage({ command }); }
+
+    function switchMainTab(tab) {
+      try {
+        sessionStorage.setItem('agpro_active_tab', tab);
+      } catch (e) {}
+      const quotaBtn = document.getElementById('tabBtnQuota');
+      const contextBtn = document.getElementById('tabBtnContext');
+      const quotaTab = document.getElementById('tabContentQuota');
+      const contextTab = document.getElementById('tabContentContext');
+      if (quotaBtn && contextBtn && quotaTab && contextTab) {
+        if (tab === 'context') {
+          quotaBtn.classList.remove('active');
+          contextBtn.classList.add('active');
+          quotaTab.classList.add('is-hidden');
+          contextTab.classList.remove('is-hidden');
+        } else {
+          contextBtn.classList.remove('active');
+          quotaBtn.classList.add('active');
+          contextTab.classList.add('is-hidden');
+          quotaTab.classList.remove('is-hidden');
+        }
+      }
+    }
+
+    (function initMainTab() {
+      const initial = '${initialTab || ''}';
+      let saved = initial;
+      if (!saved) {
+        try {
+          saved = sessionStorage.getItem('agpro_active_tab') || 'quota';
+        } catch (e) {
+          saved = 'quota';
+        }
+      }
+      switchMainTab(saved === 'context' ? 'context' : 'quota');
+    })();
 
     function setPoolFilter(filter) {
       try {
