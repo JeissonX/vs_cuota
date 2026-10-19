@@ -78,7 +78,7 @@ export class QuotaHistoryManager {
     );
 
     if (points.length < 2) {
-      return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="opacity: 0.3;">
+      return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" class="sparkline-svg sparkline-empty" opacity="0.3">
         <line x1="0" y1="${height / 2}" x2="${width}" y2="${height / 2}" stroke="currentColor" stroke-dasharray="2" stroke-width="1"/>
       </svg>`;
     }
@@ -98,7 +98,7 @@ export class QuotaHistoryManager {
     const lastPct = recent[recent.length - 1].pct;
     const strokeColor = lastPct > 50 ? '#3fb950' : lastPct > 20 ? '#f59e0b' : '#ef4444';
 
-    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="vertical-align: middle;">
+    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" class="sparkline-svg">
       <polyline fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${coords.join(' ')}"/>
     </svg>`;
   }

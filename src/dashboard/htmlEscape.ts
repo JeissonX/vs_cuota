@@ -1,3 +1,5 @@
+import * as crypto from 'crypto';
+
 /**
  * Utilidades de sanitización y serialización para Webviews (anti-XSS).
  */
@@ -29,4 +31,12 @@ export function clampPercent(value: unknown): number {
   }
   const clamped = Math.min(100, Math.max(0, n));
   return Math.round(clamped);
+}
+
+export function generateNonce(): string {
+  return crypto.randomBytes(16).toString('base64');
+}
+
+export function buildCspMeta(cspSource: string, nonce: string): string {
+  return `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} data:; font-src ${cspSource}; style-src ${cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';">`;
 }
