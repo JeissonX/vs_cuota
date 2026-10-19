@@ -6,6 +6,7 @@
 
 import type { HealthAssessment, InferenceStep } from './types';
 import type { SessionInfo } from './sessionWatcher';
+import { escapeHtml } from '../dashboard/htmlEscape';
 
 export interface PanelRenderData {
   readonly session: SessionInfo | null;
@@ -19,8 +20,9 @@ export interface PanelRenderData {
 }
 
 export function getContextTabContentHtml(data: PanelRenderData): string {
-  const sessionId = data.session?.id ? `${data.session.id.slice(0, 8)}...${data.session.id.slice(-4)}` : 'Ninguna';
-  const fullSessionId = data.session?.id ?? '';
+  const rawSessionId = data.session?.id ?? '';
+  const sessionId = rawSessionId ? `${rawSessionId.slice(0, 8)}...${rawSessionId.slice(-4)}` : 'Ninguna';
+  const fullSessionId = rawSessionId;
   const isPinned = data.session?.isPinned ?? false;
 
   const usage = data.inference?.usage;
@@ -30,8 +32,9 @@ export function getContextTabContentHtml(data: PanelRenderData): string {
   const output = usage ? usage.output.toLocaleString() : '--';
   const fresh = data.health ? data.health.freshTokens.toLocaleString() : '--';
   const latency = data.inference?.latencyMs ? `${(data.inference.latencyMs / 1000).toFixed(2)}s` : '--';
-  const modelName = data.health?.modelDisplayName
+  const rawModelName = data.health?.modelDisplayName
     || (data.inference?.modelId ? `modelo desconocido (ID: ${data.inference.modelId})` : (data.inference?.modelName || data.inference?.modelSlug || 'modelo desconocido'));
+  const modelName = escapeHtml(rawModelName);
 
   // Semáforo
   let lightColor = '#3fb950'; // green
@@ -74,7 +77,7 @@ export function getContextTabContentHtml(data: PanelRenderData): string {
       <div class="session-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 10px 14px; background: rgba(128, 128, 128, 0.08); border: 1px solid var(--card-border); border-radius: 6px;">
         <div>
           <span style="font-size: 0.85em; color: var(--muted); text-transform: uppercase;">Sesión Activa:</span>
-          <strong style="margin-left: 6px;" title="${fullSessionId}">${sessionId}</strong>
+          <strong style="margin-left: 6px;" title="${escapeHtml(fullSessionId)}">${escapeHtml(sessionId)}</strong>
           ${isPinned ? '<span style="font-size: 0.75em; padding: 2px 6px; border-radius: 3px; background: rgba(55, 148, 255, 0.2); color: var(--accent); margin-left: 6px; font-weight: 600;">[Fijada]</span>' : ''}
         </div>
         <button class="header-btn" onclick="sendMsg('selectSession')" style="font-size: 0.82em; padding: 4px 10px;">

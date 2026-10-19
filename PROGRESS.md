@@ -28,6 +28,7 @@ Este documento registra el progreso secuencial de cada hito de desarrollo para l
 | :--- | :--- | :---: | :--- |
 | **HITO 1** | src/discovery.ts: eliminación de fallback de puerto sin validar y tests de validación de sonda | [x] Completado | Eliminado fallback ciego a ports[0]. Solo se aceptan puertos validados por sonda HTTPS. 5 tests nuevos (67/67 pass). |
 | **HITO 2** | Sincronización README.md con package.json v1.3.0 y anti-slop | [x] Completado | README actualizado a v1.3.0 (`agpro-quota-1.3.0.vsix`), tablas de 11 comandos y 22 configuraciones completas, sin referencias obsoletas a 1.1.0 y verificado con anti-slop. |
+| **HITO 2B** | Escapado centralizado webviews (anti-XSS en dashboard y panel de contexto) | [x] Completado | Módulo `src/dashboard/htmlEscape.ts` con `escapeHtml` y `serializeForScript`. Sanitización de valores hoja y literales de script en `dashboardProvider.ts` y `panelHtml.ts`. 7 tests nuevos (74/74 pass). |
 
 ---
 *Convención de estados: [ ] Pendiente, [~] En curso, [x] Completado.*

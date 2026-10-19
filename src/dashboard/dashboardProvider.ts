@@ -21,6 +21,7 @@ import type { PanelRenderData } from '../context/panelHtml';
 import { getContextTabContentHtml } from '../context/panelHtml';
 import { t, getLanguage } from '../i18n';
 import { logger } from '../logger';
+import { escapeHtml, serializeForScript } from './htmlEscape';
 
 let currentPanel: vscode.WebviewPanel | null = null;
 let latestSnapshot: QuotaSnapshot | null = null;
@@ -333,7 +334,7 @@ function buildHtml(
       );
 
       const modelsPills = poolModels
-        .map((m) => `<span class="model-pill">${m.label}</span>`)
+        .map((m) => `<span class="model-pill">${escapeHtml(m.label)}</span>`)
         .join('');
 
       const lowerName = group.displayName.toLowerCase();
@@ -404,7 +405,7 @@ function buildHtml(
                 <div class="bar-fill" style="width: ${barWidth}%; background: ${barColor};"></div>
               </div>
               <div class="bucket-meta">
-                <span>${t('dashboard.resetIn')}: <strong>${b.resetCountdown || '-'}</strong> ${resetTimeFormatted ? `(${resetTimeFormatted})` : ''}</span>
+                <span>${t('dashboard.resetIn')}: <strong>${escapeHtml(b.resetCountdown || '-')}</strong> ${resetTimeFormatted ? `(${resetTimeFormatted})` : ''}</span>
               </div>
               ${burnRateHtml}
               ${
@@ -412,7 +413,7 @@ function buildHtml(
                   ? `<div class="exhausted-alert">
                       ${t('statusBar.fiveHourExhausted')
                         .replace('{time}', resetTimeFormatted)
-                        .replace('{countdown}', b.resetCountdown || '-')}
+                        .replace('{countdown}', escapeHtml(b.resetCountdown || '-'))}
                     </div>`
                   : ''
               }
@@ -423,7 +424,7 @@ function buildHtml(
       return `
         <div class="card pool-card" data-pool="${poolCategory}">
           <div class="card-title-row">
-            <span class="card-title">${group.displayName}</span>
+            <span class="card-title">${escapeHtml(group.displayName)}</span>
           </div>
           ${modelsPills ? `<div class="models-row">${modelsPills}</div>` : ''}
           ${bucketRows}
@@ -499,7 +500,7 @@ function buildHtml(
     const reason = tokenSnapshot?.unavailableReason || t('tokens.notAvailable');
     sessionTokensHtml = `
       <div class="banner info-banner">
-        <span>ℹ️ ${t('tokens.notAvailable')}: ${reason}</span>
+        <span>ℹ️ ${t('tokens.notAvailable')}: ${escapeHtml(reason)}</span>
       </div>`;
   } else if (!tokenSnapshot.activeSession) {
     sessionTokensHtml = `
@@ -519,7 +520,7 @@ function buildHtml(
         return `
           <tr>
             <td><span class="step-badge">#${r.stepIndex}</span></td>
-            <td><span class="model-tag">${r.modelName}</span></td>
+            <td><span class="model-tag">${escapeHtml(r.modelName)}</span></td>
             <td>${dualNum(r.outputTokens)}</td>
             <td>${dualNum(r.thoughtTokens)}</td>
             <td>${dualNum(r.promptTokens)}</td>
@@ -540,7 +541,7 @@ function buildHtml(
         <div class="session-header">
           <div>
             <h3>${t('tokens.sessionTitle')}</h3>
-            <span class="session-id-text">${isEs ? 'ID de sesión' : 'Session ID'}: <code>${sess.sessionId}</code></span>
+            <span class="session-id-text">${isEs ? 'ID de sesión' : 'Session ID'}: <code>${escapeHtml(sess.sessionId)}</code></span>
           </div>
           <div class="session-turns-meta">
             <span>${t('tokens.turns')}: <strong>${sess.userTurns}</strong> ${isEs ? 'usuario' : 'user'} · <strong>${sess.modelTurns}</strong> ${isEs ? 'modelo' : 'model'}</span>
@@ -554,7 +555,7 @@ function buildHtml(
                 <span class="alert-icon">⚠️</span>
                 <div>
                   <strong>${isEs ? 'Aviso de Sesión Cara' : 'Expensive Session Warning'}:</strong>
-                  ${sess.expensiveReason}
+                  ${escapeHtml(sess.expensiveReason)}
                 </div>
               </div>`
             : ''
@@ -628,7 +629,7 @@ function buildHtml(
           : '';
         return `
           <tr class="${s.isActive ? 'active-session-row' : ''}">
-            <td><code>${s.sessionId.substring(0, 14)}...</code> ${activeBadge}</td>
+            <td><code>${escapeHtml(s.sessionId.substring(0, 14))}...</code> ${activeBadge}</td>
             <td>${modDate}</td>
             <td><strong>${dualNum(s.totalTokens)}</strong></td>
           </tr>`;
@@ -1190,7 +1191,7 @@ function buildHtml(
     }
 
     (function initMainTab() {
-      const initial = '${initialTab || ''}';
+      const initial = ${serializeForScript(initialTab || '')};
       let saved = initial;
       if (!saved) {
         try {
@@ -1246,7 +1247,7 @@ function buildHtml(
       exacts.forEach(el => el.style.display = isExact ? 'inline' : 'none');
 
       if (btn) {
-        btn.textContent = isExact ? '${t('tokens.formatCompact')}' : '${t('tokens.formatExact')}';
+        btn.textContent = isExact ? ${serializeForScript(t('tokens.formatCompact'))} : ${serializeForScript(t('tokens.formatExact'))};
       }
     }
   </script>
