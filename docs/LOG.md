@@ -49,3 +49,20 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Reconciliación de divergencias en `protoWire` retrocompatible.
 - **Siguiente hito**: Hito 3 — Correcciones de honestidad y rotulado (etiquetar porcentaje de caché del dashboard de cuota como "no disponible localmente", sin alterar cálculos ni calibración NNLS).
 
+---
+
+## [2026-10-18 22:45] HITO 3 — Correcciones de Honestidad (Solo Rotulado)
+- **Qué se hizo**:
+  1. Se actualizó la tarjeta de métrica de caché de la sesión activa en el Dashboard (`src/dashboard/dashboardProvider.ts`): en lugar de mostrar un engañoso `0%` derivado del campo casi constante `metadata.9.6`, ahora se rotula de forma honesta y explícita como `"no disponible localmente"` con tooltip explicativo (`"No disponible localmente: el campo 9.6 es una constante de control y no expone tokens reales de caché"`).
+  2. En la sección de calibración NNLS del Dashboard, se ajustó el título a `"Estimación de Pesos de Cuota (NNLS - Experimental)"` y el subtítulo a `"(sujeto a calibración empírica)"`, rotulando el componente de caché en tarjetas calibradas como `"Lectura caché (no disp. local)"`.
+  3. En `src/phase2/tokenAuditor.ts`, se ajustó el texto del banner de sesión cara (`expensiveReason`) para eliminar la mención espuria de `"ratio de caché < 20%"`, indicando con veracidad `"Contexto alto (N tokens de entrada acumulados)"`.
+  4. NO se modificó ningún cálculo numérico de cuota, calibraciones NNLS ni umbrales de advertencia/crítico. Las propuestas matemáticas permanecen registradas en `docs/AUDIT.md`.
+- **Compilación y tests**:
+  - `npm run compile`: Build completo sin errores.
+  - `npm run lint`: 0 errores, 0 advertencias.
+  - `npm test`: 58/58 tests pasando en verde.
+- **Decisiones registradas**:
+  - Rotulación transparente sin alterar los modelos matemáticos subyacentes.
+- **Siguiente hito**: Hito 4 — Empaquetado y verificación final (.vsix 1.3.0, reposición de scripts de investigación en `scripts/research/`, `docs/PRUEBA_MANUAL.md`, niveles de certeza en `STATE.md`).
+
+

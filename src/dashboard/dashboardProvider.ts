@@ -451,7 +451,7 @@ function buildHtml(
               <span class="weight-val">${f.pctPer1MTokens.inputNoCache.toFixed(2)}% <small>/1M</small></span>
             </div>
             <div class="weight-item">
-              <span class="weight-label">${isEs ? 'Lectura caché' : 'Cache Read'}:</span>
+              <span class="weight-label">${isEs ? 'Lectura caché (no disp. local)' : 'Cache Read (not avail.)'}:</span>
               <span class="weight-val">${f.pctPer1MTokens.cacheRead.toFixed(2)}% <small>/1M</small></span>
             </div>
             <div class="weight-item">
@@ -483,8 +483,8 @@ function buildHtml(
     ? `
       <div class="calibration-section">
         <div class="section-title-row">
-          <h3>${isEs ? 'Estimación de Pesos de Cuota (NNLS)' : 'Quota Weight Calibration (NNLS)'}</h3>
-          <span class="section-subtitle">${isEs ? 'Ajuste matemático Lawson-Hanson sobre deltas reales' : 'Lawson-Hanson mathematical fit on real deltas'}</span>
+          <h3>${isEs ? 'Estimación de Pesos de Cuota (NNLS - Experimental)' : 'Quota Weight Calibration (NNLS - Experimental)'}</h3>
+          <span class="section-subtitle">${isEs ? 'Ajuste matemático Lawson-Hanson sobre deltas reales (sujeto a calibración empírica)' : 'Lawson-Hanson mathematical fit on real deltas'}</span>
         </div>
         <div class="calibration-cards-grid">
           ${renderCalibrationCard('Gemini (Ventana 5h)', gemini5h)}
@@ -579,7 +579,7 @@ function buildHtml(
           </div>
           <div class="metric-card">
             <span class="metric-label">${t('tokens.cache')}</span>
-            <span class="metric-val muted-val">${sess.cacheRatioFormatted}</span>
+            <span class="metric-val muted-val" style="font-size: 0.9em;" title="${isEs ? 'No disponible localmente: el campo 9.6 es una constante de control y no expone tokens reales de caché' : 'Not available locally'}">${isEs ? 'no disponible localmente' : 'not available locally'}</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">${t('tokens.average')}</span>
