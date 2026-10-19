@@ -65,4 +65,22 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - Rotulación transparente sin alterar los modelos matemáticos subyacentes.
 - **Siguiente hito**: Hito 4 — Empaquetado y verificación final (.vsix 1.3.0, reposición de scripts de investigación en `scripts/research/`, `docs/PRUEBA_MANUAL.md`, niveles de certeza en `STATE.md`).
 
+---
+
+## [2026-10-18 22:48] HITO 4 — Empaquetado y Verificación Final
+- **Qué se hizo**:
+  1. Se restituyeron los 4 scripts de investigación de solo lectura y salida sanitizada en `scripts/research/` (`research_9a_cache_audit.mjs`, `research_9b_latency_ttft.mjs`, `research_9c_session_sensitivity.mjs`, `research_9d_threshold_profiles.mjs`). Se ejecutaron con Node 22 comprobando la reproducción de las cifras empíricas de `CALIBRATION_REPORT.md` (1.990 pasos analizados en 13 bases locales, sin excepciones).
+  2. Se configuró `.vscodeignore` para excluir de forma rigurosa `context-auditor/`, `scripts/`, `docs/`, `spike_result.json`, `test/` y archivos `.vsix`.
+  3. Se ejecutó `npm run compile` y se empaquetó con éxito el archivo único `agpro-quota-1.3.0.vsix` (11 archivos, 139.85 KB). Se listó y comprobó que no contiene datos personales, spikes ni scripts de investigación.
+  4. Se redactó `docs/PRUEBA_MANUAL.md` con los pasos de instalación desde VSIX, desinstalación previa de la 0.1.2 y 10 comprobaciones funcionales e interactivas.
+  5. Se documentaron en `docs/STATE.md` los tres niveles de certeza técnica: [VERIFICADO CON DATOS REALES], [IMPLEMENTADO + TEST SINTÉTICO] y [NO PROBADO EN EL IDE REAL] (asignado a la extensión fusionada completa hasta la prueba manual).
+  6. Se comprobó mediante `git` que ningún commit toca la rama `master` (intacta en `35d0cd5`) y que la carpeta `context-auditor/` permanece 100% limpia e inalterada con sus 27 tests pasando.
+- **Compilación y tests**:
+  - `npm run compile`: Build completo sin errores.
+  - `npm run lint`: 0 errores, 0 advertencias.
+  - `npm test`: 58/58 tests pasando en verde (31 cuota + 27 context auditor).
+  - `npm test --prefix context-auditor`: 27/27 tests pasando en verde.
+- **Estado final**: Proyecto consolidado y listo para entrega.
+
+
 
