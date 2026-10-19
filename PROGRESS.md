@@ -23,5 +23,12 @@ Este documento registra el progreso secuencial de cada hito de desarrollo para l
 | **HITO D** | Dashboard rico (tarjetas ambas ventanas, tokens activos e históricos por petición, lista de sesiones, historial cuota sparkline, QuickPick) | ✅ | Implementado: Webview con doble ventana, sparklines SVG nativas, tabla de consumo por petición, alternador compacto/exacto, 23 tests en verde. |
 | **HITO E** | Cierre v1.1.0 (actualizar versión, README, CHANGELOG, THIRD_PARTY_NOTICES, generar `.vsix` v1.1.0 e instrucciones) | ✅ | Commit y paquete `agpro-quota-1.1.0.vsix` generado correctamente. |
 
+## Versión 1.3.0 (Fase 1 — Hardening & Consolidación)
+| Hito | Descripción | Estado | Notas |
+| :--- | :--- | :---: | :--- |
+| **HITO 1** | src/discovery.ts: eliminación de fallback de puerto sin validar y tests de validación de sonda | [x] Completado | Eliminado fallback ciego a ports[0]. Solo se aceptan puertos validados por sonda HTTPS. 5 tests nuevos (67/67 pass). |
+| **HITO 2** | Sincronización README.md con package.json v1.3.0 y anti-slop | [x] Completado | README actualizado a v1.3.0 (`agpro-quota-1.3.0.vsix`), tablas de 11 comandos y 22 configuraciones completas, sin referencias obsoletas a 1.1.0 y verificado con anti-slop. |
+
 ---
-*Convención de estados: ⬜ pendiente, ✅ hecho, ⚠️ con problemas.*
+*Convención de estados: [ ] Pendiente, [~] En curso, [x] Completado.*
+
