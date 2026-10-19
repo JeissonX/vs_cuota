@@ -16,7 +16,7 @@ export interface WireField {
   readonly bytes?: Uint8Array; // wire 1, 2, 5
 }
 
-function readVarint(buf: Uint8Array, pos: number): [value: number, next: number] {
+export function readVarint(buf: Uint8Array, pos: number): [value: number, next: number] {
   let result = 0;
   let mul = 1;
   for (let i = 0; i < 10; i++) {
@@ -72,6 +72,7 @@ export function* readFields(buf: Uint8Array): Generator<WireField> {
  */
 export const TOKEN_FIELD_MAP = {
   container: 9,
+  modelCode: 1,
   thoughts: 2,
   output: 3,
   input: 5,
@@ -86,7 +87,7 @@ export type DecodeFailure =
   | 'cacheExceedsInput';
 
 export type DecodeResult =
-  | { readonly ok: true; readonly usage: TokenUsage }
+  | { readonly ok: true; readonly usage: TokenUsage; readonly modelCode?: number }
   | { readonly ok: false; readonly reason: DecodeFailure };
 
 /**
@@ -119,6 +120,7 @@ export function decodeTokenUsage(metadata: Uint8Array, map = TOKEN_FIELD_MAP): D
     const output = v.get(map.output) ?? 0;
     const thoughts = v.get(map.thoughts) ?? 0;
     const cacheRead = v.get(map.cacheVarint) ?? v.get(map.cacheAlt) ?? nestedCache ?? 0;
+    const modelCode = v.get(map.modelCode);
 
     if (![input, output, thoughts, cacheRead].every(Number.isSafeInteger)) {
       return { ok: false, reason: 'unsafeInteger' };
@@ -128,6 +130,7 @@ export function decodeTokenUsage(metadata: Uint8Array, map = TOKEN_FIELD_MAP): D
     return {
       ok: true,
       usage: { input, inputNoCache: Math.max(0, input - cacheRead), cacheRead, output, thoughts },
+      modelCode,
     };
   } catch {
     return { ok: false, reason: 'malformed' };

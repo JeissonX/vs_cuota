@@ -1,7 +1,9 @@
 .ref_*/
 .draft_src/
 scripts/
-docs/samples/
+context-auditor/
+docs/
+spike_result.json
 node_modules/
 src/
 test/
@@ -11,3 +13,7 @@ esbuild.config.mjs
 .prettierrc
 .gitignore
 *.map
+**/*.map
+dist/*.map
+*.vsix
+*.jsonl

@@ -3,3 +3,6 @@ dist/
 *.vsix
 .ref_*/
 .draft_src/
+*.map
+spike_result.json
+.vscode-test/

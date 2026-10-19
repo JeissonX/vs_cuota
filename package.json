@@ -1,8 +1,8 @@
 {
   "name": "agpro-quota",
   "displayName": "AG Pro Quota — Antigravity Model Quota Monitor",
-  "description": "Monitor de cuota de modelos y estado en tiempo real para Antigravity IDE.",
-  "version": "1.2.0",
+  "description": "Monitor de cuota de modelos y estado en tiempo real para Antigravity IDE con Context Auditor integrado.",
+  "version": "1.3.0",
   "publisher": "agpro",
   "license": "MIT",
   "engines": {
@@ -82,98 +82,182 @@
         "command": "agPro.togglePoolView",
         "title": "AG Pro: Cambiar Vista de Pools (Ambos / Gemini / Claude)",
         "icon": "$(eye)"
+      },
+      {
+        "command": "contextAuditor.copySnapshot",
+        "title": "Context Auditor: Copiar Snapshot de Migración",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "contextAuditor.selectSession",
+        "title": "Context Auditor: Seleccionar Sesión Activa",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "contextAuditor.openPanel",
+        "title": "Context Auditor: Abrir Panel de Contexto",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "contextAuditor.diagnostics",
+        "title": "Context Auditor: Mostrar Diagnóstico",
+        "icon": "$(output)"
       }
     ],
-    "configuration": {
-      "title": "AG Pro Quota",
-      "properties": {
-        "agPro.refreshIntervalSeconds": {
-          "type": "number",
-          "default": 15,
-          "minimum": 5,
-          "maximum": 3600,
-          "description": "Intervalo de refresco automático en segundos (mínimo 5s)."
-        },
-        "agPro.statusBarFormat": {
-          "type": "string",
-          "default": "standard",
-          "enum": ["icon", "dot", "percent", "compact", "namePercent", "standard"],
-          "enumDescriptions": [
-            "Solo icono 🚀",
-            "Solo indicador de estado 🟢🟡🔴",
-            "Solo porcentaje: 65%",
-            "Indicador + porcentaje: 🟢 65%",
-            "Nombre + porcentaje: Modelo: 65%",
-            "Completo: 🟢 Modelo: 65% (por defecto)"
-          ],
-          "description": "Formato de la barra de estado."
-        },
-        "agPro.statusBar.showWindows": {
-          "type": "string",
-          "default": "both",
-          "enum": ["both", "binding"],
-          "enumDescriptions": [
-            "Mostrar ambas ventanas: 5h y semanal (ej: 93%/94%)",
-            "Mostrar únicamente la ventana limitante o menor (ej: 93%)"
-          ],
-          "description": "Determina si se muestran ambas ventanas de cuota o solo la ventana restrictiva en la barra de estado."
-        },
-        "agPro.statusBar.pools": {
-          "type": "array",
-          "default": [],
-          "items": { "type": "string" },
-          "description": "Lista de pools a mostrar en la barra de estado (vacío para mostrar todos los pools disponibles)."
-        },
-        "agPro.statusBar.poolView": {
-          "type": "string",
-          "default": "all",
-          "enum": ["all", "gemini", "claude"],
-          "enumDescriptions": [
-            "Mostrar ambos pools: Gemini y Claude",
-            "Mostrar únicamente el pool Gemini",
-            "Mostrar únicamente el pool Claude / GPT"
-          ],
-          "description": "Filtro de visualización de pools en la barra de estado."
-        },
-        "agPro.warningThreshold": {
-          "type": "number",
-          "default": 30,
-          "minimum": 1,
-          "maximum": 99,
-          "description": "Porcentaje bajo el cual se muestra advertencia amarilla."
-        },
-        "agPro.criticalThreshold": {
-          "type": "number",
-          "default": 10,
-          "minimum": 1,
-          "maximum": 99,
-          "description": "Porcentaje bajo el cual se muestra alerta roja."
-        },
-        "agPro.language": {
-          "type": "string",
-          "default": "auto",
-          "enum": ["auto", "es", "en"],
-          "description": "Idioma de la extensión."
-        },
-        "agPro.pinnedModels": {
-          "type": "array",
-          "default": [],
-          "items": { "type": "string" },
-          "description": "Modelos fijados en la barra de estado."
-        },
-        "agPro.notificationsEnabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Mostrar notificaciones al cruzar umbrales de cuota."
-        },
-        "agPro.logLevel": {
-          "type": "string",
-          "default": "info",
-          "enum": ["debug", "info", "warn", "error"],
-          "description": "Nivel de detalle del log."
+    "configuration": [
+      {
+        "title": "AG Pro Quota",
+        "properties": {
+          "agPro.refreshIntervalSeconds": {
+            "type": "number",
+            "default": 15,
+            "minimum": 5,
+            "maximum": 3600,
+            "description": "Intervalo de refresco automático en segundos (mínimo 5s)."
+          },
+          "agPro.statusBarFormat": {
+            "type": "string",
+            "default": "standard",
+            "enum": ["icon", "dot", "percent", "compact", "namePercent", "standard"],
+            "enumDescriptions": [
+              "Solo icono 🚀",
+              "Solo indicador de estado 🟢🟡🔴",
+              "Solo porcentaje: 65%",
+              "Indicador + porcentaje: 🟢 65%",
+              "Nombre + porcentaje: Modelo: 65%",
+              "Completo: 🟢 Modelo: 65% (por defecto)"
+            ],
+            "description": "Formato de la barra de estado."
+          },
+          "agPro.statusBar.showWindows": {
+            "type": "string",
+            "default": "both",
+            "enum": ["both", "binding"],
+            "enumDescriptions": [
+              "Mostrar ambas ventanas: 5h y semanal (ej: 93%/94%)",
+              "Mostrar únicamente la ventana limitante o menor (ej: 93%)"
+            ],
+            "description": "Determina si se muestran ambas ventanas de cuota o solo la ventana restrictiva en la barra de estado."
+          },
+          "agPro.statusBar.pools": {
+            "type": "array",
+            "default": [],
+            "items": { "type": "string" },
+            "description": "Lista de pools a mostrar en la barra de estado (vacío para mostrar todos los pools disponibles)."
+          },
+          "agPro.statusBar.poolView": {
+            "type": "string",
+            "default": "all",
+            "enum": ["all", "gemini", "claude"],
+            "enumDescriptions": [
+              "Mostrar ambos pools: Gemini y Claude",
+              "Mostrar únicamente el pool Gemini",
+              "Mostrar únicamente el pool Claude / GPT"
+            ],
+            "description": "Filtro de visualización de pools en la barra de estado."
+          },
+          "agPro.warningThreshold": {
+            "type": "number",
+            "default": 30,
+            "minimum": 1,
+            "maximum": 99,
+            "description": "Porcentaje bajo el cual se muestra advertencia amarilla."
+          },
+          "agPro.criticalThreshold": {
+            "type": "number",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 99,
+            "description": "Porcentaje bajo el cual se muestra alerta roja."
+          },
+          "agPro.language": {
+            "type": "string",
+            "default": "auto",
+            "enum": ["auto", "es", "en"],
+            "description": "Idioma de la extensión."
+          },
+          "agPro.pinnedModels": {
+            "type": "array",
+            "default": [],
+            "items": { "type": "string" },
+            "description": "Modelos fijados en la barra de estado."
+          },
+          "agPro.notificationsEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Mostrar notificaciones al cruzar umbrales de cuota."
+          },
+          "agPro.logLevel": {
+            "type": "string",
+            "default": "info",
+            "enum": ["debug", "info", "warn", "error"],
+            "description": "Nivel de detalle del log."
+          }
+        }
+      },
+      {
+        "title": "Context Auditor",
+        "properties": {
+          "contextAuditor.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Activa o desactiva las funciones del Context Auditor (salud de sesión, semáforo, insignia y snapshots)."
+          },
+          "contextAuditor.thresholdProfile": {
+            "type": "string",
+            "default": "observed",
+            "enum": ["observed", "provisional"],
+            "description": "Perfil de umbrales del semáforo: 'observed' (p50/p80 de tu historial empírico) o 'provisional' (valores teóricos iniciales)."
+          },
+          "contextAuditor.kCache": {
+            "type": "number",
+            "default": 0.10,
+            "description": "Factor de ponderación de tokens leídos de caché (k_cache)."
+          },
+          "contextAuditor.modelFamily": {
+            "type": "string",
+            "default": "auto",
+            "enum": ["auto", "gemini", "claude"],
+            "description": "Familia de modelo para umbrales y tamaño de ventana de contexto."
+          },
+          "contextAuditor.windowGemini": {
+            "type": "number",
+            "default": 1000000,
+            "description": "Tamaño de ventana de contexto para modelos Gemini."
+          },
+          "contextAuditor.windowClaude": {
+            "type": "number",
+            "default": 200000,
+            "description": "Tamaño de ventana de contexto para modelos Claude / Desconocido."
+          },
+          "contextAuditor.thresholdGeminiYellow": {
+            "type": "number",
+            "default": 50000,
+            "description": "Umbral amarillo de tokens frescos para Gemini (a calibrar)."
+          },
+          "contextAuditor.thresholdGeminiRed": {
+            "type": "number",
+            "default": 120000,
+            "description": "Umbral rojo de tokens frescos para Gemini (a calibrar)."
+          },
+          "contextAuditor.thresholdClaudeYellow": {
+            "type": "number",
+            "default": 20000,
+            "description": "Umbral amarillo de tokens frescos para Claude (a calibrar)."
+          },
+          "contextAuditor.thresholdClaudeRed": {
+            "type": "number",
+            "default": 45000,
+            "description": "Umbral rojo de tokens frescos para Claude (a calibrar)."
+          },
+          "contextAuditor.stepsLimit": {
+            "type": "number",
+            "default": 200,
+            "description": "Número máximo de pasos a consultar en SQLite (por defecto 200)."
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "compile": "node esbuild.config.mjs",

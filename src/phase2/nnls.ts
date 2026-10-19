@@ -58,6 +58,7 @@ function solvePassive(A: number[][], b: number[], passive: boolean[]): number[] 
 
 export function nnls(A: number[][], b: number[], tol = 1e-10, maxIter = 200): number[] {
   const n = A[0]?.length ?? 0;
+  if (n === 0 || b.length === 0) return [];
   const x = new Array<number>(n).fill(0);
   const passive = new Array<boolean>(n).fill(false);
   const gradient = (): number[] => {

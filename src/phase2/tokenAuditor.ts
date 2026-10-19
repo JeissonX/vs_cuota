@@ -570,7 +570,7 @@ function buildSummaryFromCached(
       (latestReq.cacheRatio === null || latestReq.cacheRatio < 0.2)
     ) {
       isExpensiveSession = true;
-      expensiveReason = `Contexto alto (${latestReq.promptTokens.toLocaleString()} tokens con ratio de caché <20%). Te sugerimos abrir un nuevo chat para optimizar tu cuota.`;
+      expensiveReason = `Contexto alto (${latestReq.promptTokens.toLocaleString()} tokens de entrada acumulados). Te sugerimos abrir un nuevo chat para optimizar tu cuota y evitar saturación.`;
     }
   }
 
