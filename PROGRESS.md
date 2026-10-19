@@ -23,5 +23,16 @@ Este documento registra el progreso secuencial de cada hito de desarrollo para l
 | **HITO D** | Dashboard rico (tarjetas ambas ventanas, tokens activos e históricos por petición, lista de sesiones, historial cuota sparkline, QuickPick) | ✅ | Implementado: Webview con doble ventana, sparklines SVG nativas, tabla de consumo por petición, alternador compacto/exacto, 23 tests en verde. |
 | **HITO E** | Cierre v1.1.0 (actualizar versión, README, CHANGELOG, THIRD_PARTY_NOTICES, generar `.vsix` v1.1.0 e instrucciones) | ✅ | Commit y paquete `agpro-quota-1.1.0.vsix` generado correctamente. |
 
+## Versión 1.3.0 (Fase 1 — Hardening & Consolidación)
+| Hito | Descripción | Estado | Notas |
+| :--- | :--- | :---: | :--- |
+| **HITO 1** | src/discovery.ts: eliminación de fallback de puerto sin validar y tests de validación de sonda | [x] Completado | Eliminado fallback ciego a ports[0]. Solo se aceptan puertos validados por sonda HTTPS. 5 tests nuevos (67/67 pass). |
+| **HITO 2** | Sincronización README.md con package.json v1.3.0 y anti-slop | [x] Completado | README actualizado a v1.3.0 (`agpro-quota-1.3.0.vsix`), tablas de 11 comandos y 22 configuraciones completas, sin referencias obsoletas a 1.1.0 y verificado con anti-slop. |
+| **HITO 2B** | Escapado centralizado webviews (anti-XSS en dashboard y panel de contexto) | [x] Completado | Módulo `src/dashboard/htmlEscape.ts` con `escapeHtml` y `serializeForScript`. Sanitización de valores hoja y literales de script en `dashboardProvider.ts` y `panelHtml.ts`. 7 tests nuevos (74/74 pass). |
+| **HITO 2C** | Fragmento compartido de contexto sin handlers inline ni style="" (CSP) | [x] Completado | Eliminados todos los `onclick=` y `style=""` de `getContextTabContentHtml`. Introducido `clampPercent`, selectores `ctx-*`, script compartido con listener delegado y `applyDynamicStyles` vía CSSOM. 6 tests nuevos (80/80 pass). |
+| **HITO 2D** | Dashboard principal sin inline handlers/estilos + CSP estricta con nonce | [x] Completado | Eliminados 9 onclicks y 13 atributos style en `dashboardProvider.ts` y `historyManager.ts`. Inyectada meta CSP estricta con nonce aleatorio por render, `generateNonce()`, `buildCspMeta()`, exportadas funciones generadoras y creado `.vscode/launch.json`. 4 tests nuevos (84/84 pass). |
+| **HITO 2E** | Panel standalone de contexto sin unsafe-inline + CSP estricta con nonce | [x] Completado | CSP estricta con nonce dinámico por render en `getWebviewContent`, reutilización de `generateNonce`/`buildCspMeta`, eliminación de inline handlers/estilos y suite `test/contextPanelCsp.test.ts` (Fase 1 completada al 100%, 89/89 pass). |
+
 ---
-*Convención de estados: ⬜ pendiente, ✅ hecho, ⚠️ con problemas.*
+*Convención de estados: [ ] Pendiente, [~] En curso, [x] Completado.*
+

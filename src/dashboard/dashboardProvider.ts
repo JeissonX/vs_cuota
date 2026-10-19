@@ -18,9 +18,10 @@ import type { TokenAuditSnapshot } from '../phase2/tokenAuditor';
 import type { QuotaHistoryManager } from '../historyManager';
 import type { CalibrationManager, CalibrationPoolStatus } from '../phase2/calibrationManager';
 import type { PanelRenderData } from '../context/panelHtml';
-import { getContextTabContentHtml } from '../context/panelHtml';
+import { getContextTabContentHtml, CONTEXT_TAB_CSS, CONTEXT_TAB_JS } from '../context/panelHtml';
 import { t, getLanguage } from '../i18n';
 import { logger } from '../logger';
+import { escapeHtml, serializeForScript, clampPercent, generateNonce, buildCspMeta } from './htmlEscape';
 
 let currentPanel: vscode.WebviewPanel | null = null;
 let latestSnapshot: QuotaSnapshot | null = null;
@@ -102,9 +103,10 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
         true,
         latestContextData,
         initialTab,
+        this._view.webview.cspSource,
       );
     } else {
-      this._view.webview.html = buildLoadingHtml();
+      this._view.webview.html = buildLoadingHtml(this._view.webview.cspSource);
     }
   }
 
@@ -178,6 +180,7 @@ export function showDashboard(
     false,
     latestContextData,
     initialTab,
+    currentPanel.webview.cspSource,
   );
 
   currentPanel.webview.onDidReceiveMessage(
@@ -249,6 +252,7 @@ function sendUpdate(initialTab?: 'quota' | 'context'): void {
       false,
       latestContextData,
       initialTab,
+      currentPanel.webview.cspSource,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -256,15 +260,20 @@ function sendUpdate(initialTab?: 'quota' | 'context'): void {
   }
 }
 
-function buildLoadingHtml(): string {
+export function buildLoadingHtml(
+  cspSource = 'https://file+.vscode-resource.vscode-cdn.net',
+): string {
   const lang = getLanguage();
   const isEs = lang === 'es';
+  const nonce = generateNonce();
   return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
+  ${buildCspMeta(cspSource, nonce)}
+  <title>${isEs ? 'Cargando Dashboard' : 'Loading Dashboard'}</title>
+  <style nonce="${nonce}">
     body {
       font-family: var(--vscode-font-family, 'Segoe UI', sans-serif);
       color: var(--vscode-editor-foreground);
@@ -273,11 +282,12 @@ function buildLoadingHtml(): string {
       min-height: 200px; text-align: center; padding: 24px;
     }
     .spinner { font-size: 2rem; margin-bottom: 12px; }
+    .loading-text { font-size: 0.9em; color: var(--vscode-descriptionForeground); }
   </style>
 </head>
 <body>
   <div class="spinner">⏳</div>
-  <div style="font-size: 0.9em; color: var(--vscode-descriptionForeground);">${isEs ? 'Cargando métricas de cuota...' : 'Loading quota metrics...'}</div>
+  <div class="loading-text">${isEs ? 'Cargando métricas de cuota...' : 'Loading quota metrics...'}</div>
 </body>
 </html>`;
 }
@@ -298,10 +308,10 @@ function formatExact(num: number): string {
 
 function dualNum(num: number | null | undefined): string {
   if (num === null || num === undefined) return '-';
-  return `<span class="val-compact">${formatCompact(num)}</span><span class="val-exact" style="display:none;">${formatExact(num)}</span>`;
+  return `<span class="val-compact">${formatCompact(num)}</span><span class="val-exact">${formatExact(num)}</span>`;
 }
 
-function buildHtml(
+export function buildHtml(
   snapshot: QuotaSnapshot,
   tokenSnapshot: TokenAuditSnapshot | null,
   _config: AgProConfig,
@@ -310,7 +320,9 @@ function buildHtml(
   isSidebar: boolean = false,
   contextData: PanelRenderData | null = null,
   initialTab?: 'quota' | 'context',
+  cspSource = 'https://file+.vscode-resource.vscode-cdn.net',
 ): string {
+  const nonce = generateNonce();
   const lang = getLanguage();
   const isEs = lang === 'es';
 
@@ -333,7 +345,7 @@ function buildHtml(
       );
 
       const modelsPills = poolModels
-        .map((m) => `<span class="model-pill">${m.label}</span>`)
+        .map((m) => `<span class="model-pill">${escapeHtml(m.label)}</span>`)
         .join('');
 
       const lowerName = group.displayName.toLowerCase();
@@ -356,8 +368,8 @@ function buildHtml(
               : b.window === '5h'
                 ? (isEs ? 'Sprint (5h)' : 'Sprint (5h)')
                 : b.window;
-          const barColor =
-            b.remainingPercent > 50 ? '#3fb950' : b.remainingPercent > 20 ? '#f59e0b' : '#ef4444';
+          const barStatusClass =
+            b.remainingPercent > 50 ? 'bar-ok' : b.remainingPercent > 20 ? 'bar-warn' : 'bar-crit';
           const barWidth = Math.max(2, b.remainingPercent);
 
           const sparkline = historyManager
@@ -392,19 +404,19 @@ function buildHtml(
             <div class="bucket ${isBinding ? 'bucket-binding' : ''}">
               <div class="bucket-header">
                 <div class="bucket-title-line">
-                  <span class="bucket-label">${windowLabel}</span>
+                  <span class="bucket-label">${escapeHtml(windowLabel)}</span>
                   ${isBinding ? `<span class="binding-badge">★ ${t('dashboard.bindingBadge')}</span>` : ''}
                 </div>
                 <div class="bucket-values">
-                  <span class="bucket-percent" style="color: ${barColor}">${b.remainingPercent}%</span>
+                  <span class="bucket-percent ${barStatusClass}">${b.remainingPercent}%</span>
                   <div class="sparkline-box">${sparkline}</div>
                 </div>
               </div>
               <div class="bar-track">
-                <div class="bar-fill" style="width: ${barWidth}%; background: ${barColor};"></div>
+                <div class="bar-fill ${barStatusClass}" data-percent="${clampPercent(barWidth)}"></div>
               </div>
               <div class="bucket-meta">
-                <span>${t('dashboard.resetIn')}: <strong>${b.resetCountdown || '-'}</strong> ${resetTimeFormatted ? `(${resetTimeFormatted})` : ''}</span>
+                <span>${t('dashboard.resetIn')}: <strong>${escapeHtml(b.resetCountdown || '-')}</strong> ${resetTimeFormatted ? `(${resetTimeFormatted})` : ''}</span>
               </div>
               ${burnRateHtml}
               ${
@@ -412,7 +424,7 @@ function buildHtml(
                   ? `<div class="exhausted-alert">
                       ${t('statusBar.fiveHourExhausted')
                         .replace('{time}', resetTimeFormatted)
-                        .replace('{countdown}', b.resetCountdown || '-')}
+                        .replace('{countdown}', escapeHtml(b.resetCountdown || '-'))}
                     </div>`
                   : ''
               }
@@ -423,7 +435,7 @@ function buildHtml(
       return `
         <div class="card pool-card" data-pool="${poolCategory}">
           <div class="card-title-row">
-            <span class="card-title">${group.displayName}</span>
+            <span class="card-title">${escapeHtml(group.displayName)}</span>
           </div>
           ${modelsPills ? `<div class="models-row">${modelsPills}</div>` : ''}
           ${bucketRows}
@@ -499,7 +511,7 @@ function buildHtml(
     const reason = tokenSnapshot?.unavailableReason || t('tokens.notAvailable');
     sessionTokensHtml = `
       <div class="banner info-banner">
-        <span>ℹ️ ${t('tokens.notAvailable')}: ${reason}</span>
+        <span>ℹ️ ${t('tokens.notAvailable')}: ${escapeHtml(reason)}</span>
       </div>`;
   } else if (!tokenSnapshot.activeSession) {
     sessionTokensHtml = `
@@ -519,7 +531,7 @@ function buildHtml(
         return `
           <tr>
             <td><span class="step-badge">#${r.stepIndex}</span></td>
-            <td><span class="model-tag">${r.modelName}</span></td>
+            <td><span class="model-tag">${escapeHtml(r.modelName)}</span></td>
             <td>${dualNum(r.outputTokens)}</td>
             <td>${dualNum(r.thoughtTokens)}</td>
             <td>${dualNum(r.promptTokens)}</td>
@@ -528,7 +540,7 @@ function buildHtml(
             <td>${speedStr}</td>
             <td class="bar-cell">
               <div class="req-bar-track">
-                <div class="req-bar-fill" style="width: ${barPct}%;"></div>
+                <div class="req-bar-fill" data-percent="${clampPercent(barPct)}"></div>
               </div>
             </td>
           </tr>`;
@@ -540,7 +552,7 @@ function buildHtml(
         <div class="session-header">
           <div>
             <h3>${t('tokens.sessionTitle')}</h3>
-            <span class="session-id-text">${isEs ? 'ID de sesión' : 'Session ID'}: <code>${sess.sessionId}</code></span>
+            <span class="session-id-text">${isEs ? 'ID de sesión' : 'Session ID'}: <code>${escapeHtml(sess.sessionId)}</code></span>
           </div>
           <div class="session-turns-meta">
             <span>${t('tokens.turns')}: <strong>${sess.userTurns}</strong> ${isEs ? 'usuario' : 'user'} · <strong>${sess.modelTurns}</strong> ${isEs ? 'modelo' : 'model'}</span>
@@ -554,7 +566,7 @@ function buildHtml(
                 <span class="alert-icon">⚠️</span>
                 <div>
                   <strong>${isEs ? 'Aviso de Sesión Cara' : 'Expensive Session Warning'}:</strong>
-                  ${sess.expensiveReason}
+                  ${escapeHtml(sess.expensiveReason)}
                 </div>
               </div>`
             : ''
@@ -579,7 +591,7 @@ function buildHtml(
           </div>
           <div class="metric-card">
             <span class="metric-label">${t('tokens.cache')}</span>
-            <span class="metric-val muted-val" style="font-size: 0.9em;" title="${isEs ? 'No disponible localmente: el campo 9.6 es una constante de control y no expone tokens reales de caché' : 'Not available locally'}">${isEs ? 'no disponible localmente' : 'not available locally'}</span>
+            <span class="metric-val muted-val val-sm" title="${isEs ? 'No disponible localmente: el campo 9.6 es una constante de control y no expone tokens reales de caché' : 'Not available locally'}">${isEs ? 'no disponible localmente' : 'not available locally'}</span>
           </div>
           <div class="metric-card">
             <span class="metric-label">${t('tokens.average')}</span>
@@ -587,7 +599,7 @@ function buildHtml(
           </div>
         </div>
 
-        <h4 style="margin: 18px 0 10px 0; font-size: 1.05em;">${t('tokens.perRequestTitle')} (${sess.requests.length})</h4>
+        <h4 class="per-request-title">${t('tokens.perRequestTitle')} (${sess.requests.length})</h4>
         <div class="table-wrap">
           <table>
             <thead>
@@ -600,11 +612,11 @@ function buildHtml(
                 <th>${t('tokens.total')}</th>
                 <th>${t('tokens.duration')}</th>
                 <th>${t('tokens.speed')}</th>
-                <th style="min-width: 90px;">${isEs ? 'Consumo' : 'Usage'}</th>
+                <th class="col-usage">${isEs ? 'Consumo' : 'Usage'}</th>
               </tr>
             </thead>
             <tbody>
-              ${requestRows || `<tr><td colspan="9" style="text-align: center; color: var(--muted);">${t('tokens.noRequests')}</td></tr>`}
+              ${requestRows || `<tr><td colspan="9" class="table-empty-cell">${t('tokens.noRequests')}</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -628,7 +640,7 @@ function buildHtml(
           : '';
         return `
           <tr class="${s.isActive ? 'active-session-row' : ''}">
-            <td><code>${s.sessionId.substring(0, 14)}...</code> ${activeBadge}</td>
+            <td><code>${escapeHtml(s.sessionId.substring(0, 14))}...</code> ${activeBadge}</td>
             <td>${modDate}</td>
             <td><strong>${dualNum(s.totalTokens)}</strong></td>
           </tr>`;
@@ -637,8 +649,8 @@ function buildHtml(
 
     globalSectionHtml = `
       <div class="global-section">
-        <h3 style="margin-bottom: 12px;">${t('tokens.globalTitle')}</h3>
-        <div class="metrics-grid" style="margin-bottom: 16px;">
+        <h3 class="global-title">${t('tokens.globalTitle')}</h3>
+        <div class="metrics-grid metrics-grid-mb16">
           <div class="metric-card">
             <span class="metric-label">${t('tokens.total')}</span>
             <span class="metric-val accent">${dualNum(glob.totalTokens)}</span>
@@ -661,7 +673,7 @@ function buildHtml(
           </div>
         </div>
 
-        <h4 style="margin: 16px 0 8px 0; font-size: 1.0em;">${t('tokens.sessionList')}</h4>
+        <h4 class="session-list-title">${t('tokens.sessionList')}</h4>
         <div class="table-wrap">
           <table>
             <thead>
@@ -691,8 +703,9 @@ function buildHtml(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${buildCspMeta(cspSource, nonce)}
   <title>${t('dashboard.title')}</title>
-  <style>
+  <style nonce="${nonce}">
     :root {
       --bg: var(--vscode-editor-background);
       --fg: var(--vscode-editor-foreground);
@@ -1098,6 +1111,23 @@ function buildHtml(
     .main-tab-content.is-hidden {
       display: none !important;
     }
+    .val-exact { display: none; }
+    .sparkline-svg { vertical-align: middle; }
+    .bucket-percent.bar-ok { color: #3fb950; }
+    .bucket-percent.bar-warn { color: #f59e0b; }
+    .bucket-percent.bar-crit { color: #ef4444; }
+    .bar-fill.bar-ok { background: #3fb950; }
+    .bar-fill.bar-warn { background: #f59e0b; }
+    .bar-fill.bar-crit { background: #ef4444; }
+    .val-sm { font-size: 0.9em; }
+    .per-request-title { margin: 18px 0 10px 0; font-size: 1.05em; }
+    .col-usage { min-width: 90px; }
+    .table-empty-cell { text-align: center; color: var(--muted); }
+    .global-title { margin-bottom: 12px; }
+    .metrics-grid-mb16 { margin-bottom: 16px; }
+    .session-list-title { margin: 16px 0 8px 0; font-size: 1.0em; }
+    .tab-empty-msg { padding: 24px; text-align: center; color: var(--muted); }
+    ${CONTEXT_TAB_CSS}
   </style>
 </head>
 <body class="${isSidebar ? 'is-sidebar' : ''}">
@@ -1108,28 +1138,28 @@ function buildHtml(
       <span class="meta">${t('dashboard.lastSync')}: ${lastSync} · ${latency}</span>
       ${
         isSidebar
-          ? `<button class="header-btn" onclick="sendMsg('openFullDashboard')" title="${t('dashboard.openFull')}">
+          ? `<button class="header-btn" data-action="openFullDashboard" title="${t('dashboard.openFull')}">
               ↗ ${t('dashboard.openFull')}
             </button>`
           : ''
       }
-      <button class="header-btn" id="toggleFormatBtn" onclick="toggleFormat()">
+      <button class="header-btn" id="toggleFormatBtn" data-dash-action="toggleFormat">
         ${t('tokens.formatExact')}
       </button>
-      <button class="header-btn primary" onclick="sendMsg('refresh')">
+      <button class="header-btn primary" data-action="refresh">
         🔄 ${t('dashboard.refresh')}
       </button>
-      <button class="header-btn" onclick="sendMsg('openSettings')">
+      <button class="header-btn" data-action="openSettings">
         ⚙️ ${t('dashboard.settings')}
       </button>
     </div>
   </div>
 
   <div class="main-tabs-bar">
-    <button class="main-tab-btn active" id="tabBtnQuota" onclick="switchMainTab('quota')">
+    <button class="main-tab-btn active" id="tabBtnQuota" data-dash-action="switchMainTab" data-tab="quota">
       📊 ${isEs ? 'Cuota' : 'Quota'}
     </button>
-    <button class="main-tab-btn" id="tabBtnContext" onclick="switchMainTab('context')">
+    <button class="main-tab-btn" id="tabBtnContext" data-dash-action="switchMainTab" data-tab="context">
       🩺 ${isEs ? 'Salud de sesión y snapshot' : 'Session Health & Snapshot'}
     </button>
   </div>
@@ -1137,13 +1167,13 @@ function buildHtml(
   <div id="tabContentQuota" class="main-tab-content">
     <div class="cards-header">
       <div class="filter-pills" id="poolFilterPills">
-        <button class="filter-pill active" data-filter="all" onclick="setPoolFilter('all')">
+        <button class="filter-pill active" data-filter="all" data-dash-action="filterPool">
           ${t('dashboard.filterAll')}
         </button>
-        <button class="filter-pill" data-filter="gemini" onclick="setPoolFilter('gemini')">
+        <button class="filter-pill" data-filter="gemini" data-dash-action="filterPool">
           ${t('dashboard.filterGemini')}
         </button>
-        <button class="filter-pill" data-filter="claude" onclick="setPoolFilter('claude')">
+        <button class="filter-pill" data-filter="claude" data-dash-action="filterPool">
           ${t('dashboard.filterClaude')}
         </button>
       </div>
@@ -1159,12 +1189,30 @@ function buildHtml(
   </div>
 
   <div id="tabContentContext" class="main-tab-content is-hidden">
-    ${contextData ? getContextTabContentHtml(contextData) : `<div style="padding: 24px; text-align: center; color: var(--muted);">${isEs ? 'Auditor de contexto no disponible o sin datos de sesión activa.' : 'Context auditor not available or no active session data.'}</div>`}
+    ${contextData ? getContextTabContentHtml(contextData) : `<div class="tab-empty-msg">${isEs ? 'Auditor de contexto no disponible o sin datos de sesión activa.' : 'Context auditor not available or no active session data.'}</div>`}
   </div>
 
-  <script>
+  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     function sendMsg(command) { vscode.postMessage({ command }); }
+    ${CONTEXT_TAB_JS}
+
+    document.addEventListener('click', function(e) {
+      var target = e.target;
+      if (!target || typeof target.closest !== 'function') return;
+      var el = target.closest('[data-dash-action]');
+      if (!el) return;
+      var action = el.getAttribute('data-dash-action');
+      if (action === 'switchMainTab') {
+        var tab = el.getAttribute('data-tab');
+        if (tab) switchMainTab(tab);
+      } else if (action === 'filterPool') {
+        var filter = el.getAttribute('data-filter');
+        if (filter) setPoolFilter(filter);
+      } else if (action === 'toggleFormat') {
+        toggleFormat();
+      }
+    });
 
     function switchMainTab(tab) {
       try {
@@ -1190,7 +1238,7 @@ function buildHtml(
     }
 
     (function initMainTab() {
-      const initial = '${initialTab || ''}';
+      const initial = ${serializeForScript(initialTab || '')};
       let saved = initial;
       if (!saved) {
         try {
@@ -1246,7 +1294,7 @@ function buildHtml(
       exacts.forEach(el => el.style.display = isExact ? 'inline' : 'none');
 
       if (btn) {
-        btn.textContent = isExact ? '${t('tokens.formatCompact')}' : '${t('tokens.formatExact')}';
+        btn.textContent = isExact ? ${serializeForScript(t('tokens.formatCompact'))} : ${serializeForScript(t('tokens.formatExact'))};
       }
     }
   </script>

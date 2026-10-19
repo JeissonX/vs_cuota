@@ -24,11 +24,12 @@ const PS_TIMEOUT_MS = 15000;
 /** Caché en memoria del último descubrimiento exitoso */
 let cachedConnection: ServerConnection | null = null;
 
-interface ProcessCandidate {
+export interface ProcessCandidate {
   pid: number;
   csrfToken: string;
   extensionPort: number;
 }
+
 
 /**
  * Encuentra el servidor local de Antigravity.
@@ -271,16 +272,19 @@ export async function validateEndpointPort(port: number, csrfToken: string): Pro
 
 /**
  * Itera los candidatos y sus puertos escuchando para encontrar el puerto que responde.
+ * Solo se acepta un puerto que pase la sonda de validación.
  */
-async function findWorkingPortForCandidates(
+export async function findWorkingPortForCandidates(
   candidates: ProcessCandidate[],
+  portScanner: (pid: number) => Promise<number[]> = getListeningPorts,
+  portValidator: (port: number, token: string) => Promise<boolean> = validateEndpointPort,
 ): Promise<ServerConnection | null> {
   for (const candidate of candidates) {
-    const ports = await getListeningPorts(candidate.pid);
+    const ports = await portScanner(candidate.pid);
 
     // Intentar validar cada puerto detectado
     for (const port of ports) {
-      const isValid = await validateEndpointPort(port, candidate.csrfToken);
+      const isValid = await portValidator(port, candidate.csrfToken);
       if (isValid) {
         logger.debug(`Puerto ${port} validado exitosamente para PID ${candidate.pid}`);
         return {
@@ -289,16 +293,6 @@ async function findWorkingPortForCandidates(
           pid: candidate.pid,
         };
       }
-    }
-
-    // Si la validación falló pero había puertos, guardamos el primer puerto como fallback
-    if (ports.length > 0) {
-      logger.debug(`Usando primer puerto (${ports[0]}) como fallback para PID ${candidate.pid}`);
-      return {
-        port: ports[0],
-        csrfToken: candidate.csrfToken,
-        pid: candidate.pid,
-      };
     }
   }
 
