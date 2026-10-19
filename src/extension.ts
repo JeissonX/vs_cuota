@@ -10,6 +10,7 @@
  */
 
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { readConfig } from './config';
 import { logger } from './logger';
 import { resolveLanguage, setLanguage, t, getLanguage } from './i18n';
@@ -21,7 +22,7 @@ import { showDashboard, updateDashboardIfOpen, DashboardViewProvider } from './d
 import { showQuickOverview } from './quickPick';
 import { discoverServer } from './discovery';
 import { QuotaHistoryManager } from './historyManager';
-import { auditTokens, type TokenAuditSnapshot } from './phase2/tokenAuditor';
+import { auditTokens, startConversationWatcher, type TokenAuditSnapshot } from './phase2/tokenAuditor';
 import { CalibrationManager } from './phase2/calibrationManager';
 import type { QuotaSnapshot, AgProConfig, StatusBarPoolView } from './types';
 
@@ -48,6 +49,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let statusBar: StatusBarManager | null = null;
 let contextStatusBar: StatusBarController | null = null;
 let sessionWatcher: SessionWatcher | null = null;
+let quotaWatcher: { dispose: () => void } | null = null;
 
 let lastSnapshot: QuotaSnapshot | null = null;
 let lastTokenSnapshot: TokenAuditSnapshot | null = null;
@@ -80,23 +82,8 @@ export function activate(context: vscode.ExtensionContext): void {
   historyManager = new QuotaHistoryManager(context.globalState);
   calibrationManager = new CalibrationManager();
 
-  // 5. Inicialización de Context Auditor (un solo vigilante, sin sondeo duplicado)
-  try {
-    contextStatusBar = new StatusBarController();
-    context.subscriptions.push(contextStatusBar);
-
-    sessionWatcher = new SessionWatcher(context, undefined, { enableInternalPolling: false });
-    sessionWatcher.onSessionChange(() => {
-      logger.info('Cambio detectado en bases de conversaciones, refrescando cuota y auditor...');
-      triggerRefresh();
-      refreshContextAuditor();
-    });
-    sessionWatcher.start();
-    context.subscriptions.push({ dispose: () => sessionWatcher?.stop() });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error(`Error al iniciar SessionWatcher del auditor: ${msg}`);
-  }
+  // 5. Inicialización condicional de Context Auditor y Vigilancia
+  syncAuditorLifecycle(context);
 
   // 6. Registro de comandos de AG Pro Quota
   context.subscriptions.push(
@@ -423,7 +410,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       if (e.affectsConfiguration('contextAuditor')) {
-        refreshContextAuditor();
+        syncAuditorLifecycle(context);
       }
     }),
   );
@@ -435,6 +422,86 @@ export function activate(context: vscode.ExtensionContext): void {
 
 function isContextAuditorEnabled(): boolean {
   return vscode.workspace.getConfiguration('contextAuditor').get<boolean>('enabled', true);
+}
+
+function syncAuditorLifecycle(context: vscode.ExtensionContext): void {
+  const enabled = isContextAuditorEnabled();
+  const convDir = path.join(
+    process.env.USERPROFILE || process.env.HOME || '',
+    '.gemini',
+    'antigravity-ide',
+    'conversations',
+  );
+
+  if (enabled) {
+    if (quotaWatcher) {
+      try {
+        quotaWatcher.dispose();
+      } catch {
+        /* ignore */
+      }
+      quotaWatcher = null;
+    }
+
+    if (!sessionWatcher) {
+      try {
+        sessionWatcher = new SessionWatcher(context, undefined, { enableInternalPolling: false });
+        sessionWatcher.onSessionChange(() => {
+          logger.info('Cambio detectado en bases de conversaciones, refrescando cuota y auditor...');
+          triggerRefresh();
+          refreshContextAuditor();
+        });
+        sessionWatcher.start();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Error al iniciar SessionWatcher del auditor: ${msg}`);
+      }
+    }
+
+    if (!contextStatusBar) {
+      try {
+        contextStatusBar = new StatusBarController();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Error al crear StatusBarController del auditor: ${msg}`);
+      }
+    }
+
+    refreshContextAuditor();
+  } else {
+    if (sessionWatcher) {
+      try {
+        sessionWatcher.stop();
+      } catch {
+        /* ignore */
+      }
+      sessionWatcher = null;
+    }
+
+    if (contextStatusBar) {
+      try {
+        contextStatusBar.dispose();
+      } catch {
+        /* ignore */
+      }
+      contextStatusBar = null;
+    }
+
+    latestContextData = null;
+
+    if (!quotaWatcher) {
+      try {
+        quotaWatcher = startConversationWatcher(convDir, () => {
+          logger.info('Cambio detectado en bases de conversaciones, refrescando cuota...');
+          triggerRefresh();
+        });
+      } catch (err) {
+        logger.warn(`No se pudo iniciar watcher independiente de cuota: ${err}`);
+      }
+    }
+
+    updateDashboardContextData();
+  }
 }
 
 function getContextAuditorConfig(): HealthEvaluatorConfig {
@@ -723,8 +790,19 @@ export function deactivate(): void {
     refreshTimer = null;
   }
   statusBar?.dispose();
-  contextStatusBar?.dispose();
-  sessionWatcher?.stop();
+  statusBar = null;
+  if (contextStatusBar) {
+    contextStatusBar.dispose();
+    contextStatusBar = null;
+  }
+  if (sessionWatcher) {
+    sessionWatcher.stop();
+    sessionWatcher = null;
+  }
+  if (quotaWatcher) {
+    quotaWatcher.dispose();
+    quotaWatcher = null;
+  }
   resetNotifications();
   logger.info('AG Pro Quota desactivada correctamente.');
   logger.dispose();

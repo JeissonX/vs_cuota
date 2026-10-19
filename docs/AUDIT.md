@@ -10,16 +10,42 @@
 
 ## 1. Los 5 Hallazgos Más Graves (Priorizados por Severidad)
 
-1. **[SEVERIDAD CRÍTICA] Campo `metadata.9.6` usado como lectura de caché es en realidad un enumerado constante (24/26)** `[VERIFICADO con datos reales]`  
-   En `agpro-quota`, `sess.cacheRatioFormatted` y la tasa de acierto de caché del dashboard se calculan a partir de `metadata.9.6`. Este campo vale invariablemente 24 (Gemini) o 26 (Claude). Provoca que la UI muestre falsamente "0.0% de caché" y distorsiona la regresión NNLS al actuar como un pseudo-intercepto espurio.
-2. **[SEVERIDAD ALTA] Duplicidad de vigilancia de archivos SQLite y sondeos periódicos con consumo redundante** `[VERIFICADO con datos reales]`  
-   Existen dos `fs.watch` concurrentes sobre `~/.gemini/antigravity-ide/conversations/` y dos bucles de sondeo independientes (15s en cuota y 3.5s en auditor), abriendo y analizando las bases SQLite de forma duplicada con parseo protobuf reiterado en cada ciclo.
-3. **[SEVERIDAD MEDIA-ALTA] Disonancia crítica invertida en Claude para umbrales observados [100k - 115k]** `[VERIFICADO con datos o tests]`  
-   En el auditor con perfil `observed`, entre 100k y 115k tokens la insignia marca `CRÍTICO` (>50% de la ventana de 200k) mientras el semáforo marca `VERDE` (<115k por basarse en una sola sesión atípica), transmitiendo falsa seguridad en la barra de estado.
-4. **[SEVERIDAD MEDIA] Scripts de investigación ausentes en el árbol de trabajo (`research_*.mjs`)** `[VERIFICADO con datos reales]`  
-   Los 4 scripts que sustentan las conclusiones empíricas de `CALIBRATION_REPORT.md` (auditoría de caché, latencia TTFT, sensibilidad de muestra y perfiles) no existen en el repositorio y deben ser reconstituidos para garantizar reproducibilidad.
-5. **[SEVERIDAD MEDIA] Ausencia de pruebas en entorno IDE real para UI y concurrencia** `[HIPÓTESIS]`  
-   El 100% de los tests existentes (31 de cuota y 27 de auditor) se ejecutan con fixtures sintéticas o en memoria. La interacción visual en la Status Bar, los paneles Webview combinados y la concurrencia real de Antigravity con múltiples ventanas no han sido evaluados en una sesión interactiva del IDE.
+1. **[SEVERIDAD CRÍTICA] Campo `metadata.9.6` usado como lectura de caché es un enumerado constante (24/26) que distorsiona el NNLS y la UI** `[VERIFICADO con datos reales]`  
+   - **Líneas exactas involucradas**:
+     - `src/types.ts:164`: `FEATURES = ['inputNoCache', 'cacheRead', 'output', 'thoughts'] as const;`
+     - `src/types.ts:172`: `readonly cacheRead: number;`
+     - `src/phase2/protoWire.ts:109`: `cacheRead = v.get(map.cacheVarint) ?? ...` (`cacheVarint = 6`)
+     - `src/phase2/protoWire.ts:111`: `inputNoCache: Math.max(0, input - cacheRead)`
+     - `src/phase2/tokenAuditor.ts:460-461`: `cacheTokens = u.cacheRead; cacheRatio = u.input > 0 ? Math.round((u.cacheRead / u.input) * 1000) / 1000 : 0;`
+     - `src/phase2/tokenAuditor.ts:512`: `cached.totalCache += cacheTokens;`
+     - `src/phase2/tokenAuditor.ts:554-560`: cálculo de `cacheRatioFormatted` (mostraba falsamente `0.0%`)
+     - `src/phase2/tokenAuditor.ts:570`: `latestReq.cacheRatio < 0.2` (aviso de sesión cara espurio)
+     - `src/phase2/calibrationAligner.ts:80`: `x.cacheRead += su.cacheRead;` (acumula la constante en vector de regresión)
+     - `src/phase2/calibrationManager.ts:182-184`: matriz de diseño NNLS `[inputNoCache, cacheRead, output, thoughts]`
+     - `src/phase2/nnls.ts:106`: `pctPer1MTokens.cacheRead = weights[1] * 1_000_000`
+   - **Cálculos afectados**:
+     - `inputNoCache` se subestima en exactamente 24 o 26 tokens en cada inferencia (error relativo despreciable < 0.02%).
+     - En el modelo NNLS (Lawson-Hanson), al ser `cacheRead` constante para cada llamada ($24 \times \text{pasos}$), actúa como un pseudo-intercepto espurio que absorbe parte de la caída fija de cuota y desestabiliza los coeficientes de `inputNoCache`, deteriorando el $R^2$.
+   - **Propuesta de corrección (SIN aplicar en v1.3.0)**:
+     - Excluir `cacheRead` del vector `FEATURES` reduciéndolo a 3 variables independientes (`input`, `output`, `thoughts`) o fijar su peso en 0.
+     - Documentar que Antigravity IDE no almacena tokens leídos de caché en la base SQLite local.
+
+2. **[SEVERIDAD ALTA] Seguridad de ambos proyectos: blindaje estricto de SQLite, subprocesos y privacidad** `[VERIFICADO con datos reales]`  
+   - **SQLite**: En ambos proyectos (`agpro-quota/src/phase2/tokenAuditor.ts:382-388`, `context-auditor/src/dbReader.ts:132-136, 252-256`, y `src/context/dbReader.ts:130-134, 250-254`), las bases se abren exclusivamente con `DatabaseSync(path, { readOnly: true })`, `PRAGMA busy_timeout = 3000;` y `PRAGMA query_only = ON;`.
+   - **Escrituras en `~/.gemini`**: Cero llamadas a `fs.writeFile`, `appendFile`, `mkdir` o `createWriteStream` en todo el código fuente. Se cumple estrictamente la regla de seguridad S1.
+   - **Red**: Cero llamadas a Internet o servicios de telemetría remota. Únicamente llamadas HTTP hacia `127.0.0.1:<port>` contra el Language Server local en agpro-quota; cero llamadas de red en context-auditor.
+   - **Subprocesos**: `execFile` con timeouts rígidos (3s en git, 3s-5s en powershell) y sanitización estricta de rutas (`~`).
+
+3. **[SEVERIDAD MEDIA-ALTA] Duplicidad de vigilancia de archivos SQLite y sondeos redundantes** `[VERIFICADO con datos reales]`  
+   - En master existía `startConversationWatcher` (`fs.watch` con debounce 1.5s) y bucle periódico de 15s. En context-auditor existía `SessionWatcher` (`fs.watch` con debounce 500ms) y bucle de 3.5s con foco.
+   - Sin unificación, se ejecutaban ~4.2 barridos de directorio por ciclo con apertura reiterada de SQLite sobre la misma conversación activa.
+   - **Solución implementada**: Unificación bajo `SessionWatcher` con `enableInternalPolling: false` y alternancia dinámica limpia (`syncAuditorLifecycle`).
+
+4. **[SEVERIDAD MEDIA] Disonancia crítica invertida en Claude para umbrales observados [100k - 115k]** `[VERIFICADO con datos o tests]`  
+   - En el auditor con perfil `observed`, entre 100k y 115k tokens la insignia marca `CRÍTICO` (>50% de la ventana de 200k) mientras el semáforo marca `VERDE` (<115k por basarse en una sola sesión empírica atípica de 144k), transmitiendo falsa seguridad en la barra de estado.
+
+5. **[SEVERIDAD MEDIA] Comportamiento interactivo en IDE real aún no validado** `[NO PROBADO EN EL IDE REAL]`  
+   - Si bien los 62 tests automatizados (sintéticos y de integración de activación) pasan en verde en Node.js, la interacción visual en la barra de estado de Antigravity IDE (distribución de los 2 elementos contiguos), el comportamiento de pestañas en el Webview real y la respuesta ante concurrencia con múltiples ventanas en Antigravity IDE quedan clasificadas en nivel `[NO PROBADO EN EL IDE REAL]` hasta la ejecución del protocolo en `docs/PRUEBA_MANUAL.md`.
 
 ---
 

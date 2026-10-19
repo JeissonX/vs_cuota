@@ -82,5 +82,24 @@ Este archivo registra de forma acumulativa (solo adición) los eventos, decision
   - `npm test --prefix context-auditor`: 27/27 tests pasando en verde.
 - **Estado final**: Proyecto consolidado y listo para entrega.
 
+---
+
+## [2026-10-18 23:15] FASE DE VERIFICACIÓN Y CORRECCIÓN (v1.3.0)
+- **Qué se hizo**:
+  1. **Paso 1 (Regresiones frente a master)**: Comparación exhaustiva de `package.json`, `src/extension.ts`, `src/dashboard/dashboardProvider.ts` y estado compartido. Resultado documentado en `docs/REGRESSION_CHECK.md`. Cero IDs perdidos, cero IDs duplicados o colisionados, 7 comandos de cuota y 10 configuraciones de master 100% idénticos.
+  2. **Paso 2 (Prueba de activación sin IDE)**: Creación de mock integral de VS Code en `test/mocks/vscode.ts` y suite en `test/activation.test.ts`. 4/4 casos probados y pasando: (1) registro de 11 comandos y vistas; (2) `contextAuditor.enabled=false` evita creación de watcher e item del auditor; (3) aislamiento ante excepciones del auditor sin afectar cuota; (4) `deactivate()` libera recursos ordenadamente de forma idempotente.
+  3. **Paso 3 (Corrección de ciclo de vida y hot-reload)**: Se corrigió la desconexión del vigilante y la barra de estado en caliente en `src/extension.ts` mediante `syncAuditorLifecycle(context)`: al alternar `contextAuditor.enabled`, el vigilante y status bar del auditor se crean o destruyen dinámicamente y se conmuta con el vigilante standalone de cuota sin necesidad de recargar la ventana.
+  4. **Paso 4 (Empaquetado y contenido VSIX)**: Actualización de `.vscodeignore` para excluir de forma garantizada `*.map`, `**/*.map`, `docs/`, `scripts/`, `test/`, `spike_result.json`, `context-auditor/`. Empaquetado `agpro-quota-1.3.0.vsix` (10 archivos, 47.56 KB) limpio, sin rutas personales ni código de prueba. Se documentó propuesta de mejora para el `.vscodeignore` de master.
+  5. **Paso 5 (Reescritura de 5 hallazgos en AUDIT.md)**: Reescritura completa de la sección 1 de `docs/AUDIT.md` con hallazgos reales: (1) Uso de `metadata.9.6` (constante 24/26) en NNLS con líneas exactas (`src/types.ts:164,172`, `src/phase2/protoWire.ts:109,111`, `src/phase2/tokenAuditor.ts:460,512,554,570`, `src/phase2/calibrationAligner.ts:80`, `src/phase2/calibrationManager.ts:182-184`, `src/phase2/nnls.ts:106`), su impacto algebraico y propuesta de exclusión de `cacheRead` en `FEATURES` sin aplicar; (2) Seguridad S1/S2/S4 verificada; (3) Rendimiento de watchers y unificación; (4) Disonancia crítica de Claude en [100k-115k]; (5) Interacción interactiva real pendiente de validación humana.
+- **Compilación y tests**:
+  - `npm run compile`: Build completo sin errores.
+  - `npm run lint`: 0 errores, 0 advertencias.
+  - `npx tsc --noEmit`: 0 errores.
+  - `npm test`: 62/62 tests pasando en verde (31 cuota + 27 auditor + 4 activación).
+  - `npm test --prefix context-auditor`: 27/27 tests pasando en verde.
+- **Decisiones registradas**:
+  - Se respetaron las reglas S1-S4 y la prohibición estricta de tocar master, borrar `context-auditor/` o alterar cálculos de cuota y calibración NNLS.
+
+
 
 

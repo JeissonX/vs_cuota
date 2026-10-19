@@ -13,5 +13,7 @@ esbuild.config.mjs
 .prettierrc
 .gitignore
 *.map
+**/*.map
+dist/*.map
 *.vsix
 *.jsonl
