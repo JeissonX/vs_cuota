@@ -31,7 +31,7 @@ Este documento registra el progreso secuencial de cada hito de desarrollo para l
 | **HITO 2B** | Escapado centralizado webviews (anti-XSS en dashboard y panel de contexto) | [x] Completado | Módulo `src/dashboard/htmlEscape.ts` con `escapeHtml` y `serializeForScript`. Sanitización de valores hoja y literales de script en `dashboardProvider.ts` y `panelHtml.ts`. 7 tests nuevos (74/74 pass). |
 | **HITO 2C** | Fragmento compartido de contexto sin handlers inline ni style="" (CSP) | [x] Completado | Eliminados todos los `onclick=` y `style=""` de `getContextTabContentHtml`. Introducido `clampPercent`, selectores `ctx-*`, script compartido con listener delegado y `applyDynamicStyles` vía CSSOM. 6 tests nuevos (80/80 pass). |
 | **HITO 2D** | Dashboard principal sin inline handlers/estilos + CSP estricta con nonce | [x] Completado | Eliminados 9 onclicks y 13 atributos style en `dashboardProvider.ts` y `historyManager.ts`. Inyectada meta CSP estricta con nonce aleatorio por render, `generateNonce()`, `buildCspMeta()`, exportadas funciones generadoras y creado `.vscode/launch.json`. 4 tests nuevos (84/84 pass). |
-| **HITO 2E** | Panel standalone de contexto sin unsafe-inline + CSP estricta con nonce | [ ] Pendiente | Configuración de CSP con nonce en `getWebviewContent` para panel independiente. |
+| **HITO 2E** | Panel standalone de contexto sin unsafe-inline + CSP estricta con nonce | [x] Completado | CSP estricta con nonce dinámico por render en `getWebviewContent`, reutilización de `generateNonce`/`buildCspMeta`, eliminación de inline handlers/estilos y suite `test/contextPanelCsp.test.ts` (Fase 1 completada al 100%, 89/89 pass). |
 
 ---
 *Convención de estados: [ ] Pendiente, [~] En curso, [x] Completado.*

@@ -6,7 +6,7 @@
 
 import type { HealthAssessment, InferenceStep } from './types';
 import type { SessionInfo } from './sessionWatcher';
-import { escapeHtml, clampPercent } from '../dashboard/htmlEscape';
+import { escapeHtml, clampPercent, generateNonce, buildCspMeta } from '../dashboard/htmlEscape';
 
 export interface PanelRenderData {
   readonly session: SessionInfo | null;
@@ -422,15 +422,20 @@ export const CONTEXT_TAB_JS = `
   }
 `;
 
-export function getWebviewContent(data: PanelRenderData): string {
+export function getWebviewContent(
+  data: PanelRenderData,
+  cspSource: string = 'https://file+.vscode-resource.vscode-cdn.net',
+): string {
+  const nonce = generateNonce();
   const content = getContextTabContentHtml(data);
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${buildCspMeta(cspSource, nonce)}
   <title>Context Auditor</title>
-  <style>
+  <style nonce="${nonce}">
     :root {
       --bg: var(--vscode-editor-background, #1e1e1e);
       --fg: var(--vscode-editor-foreground, #cccccc);
@@ -471,7 +476,7 @@ export function getWebviewContent(data: PanelRenderData): string {
 </head>
 <body>
   ${content}
-  <script>
+  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     function sendMsg(command) { vscode.postMessage({ command }); }
     ${CONTEXT_TAB_JS}
