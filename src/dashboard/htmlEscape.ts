@@ -21,3 +21,12 @@ export function serializeForScript(value: unknown): string {
   }
   return json.replace(/</g, '\\u003c');
 }
+
+export function clampPercent(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    return 0;
+  }
+  const clamped = Math.min(100, Math.max(0, n));
+  return Math.round(clamped);
+}

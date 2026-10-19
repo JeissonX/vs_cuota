@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { escapeHtml, serializeForScript } from '../src/dashboard/htmlEscape';
+import { escapeHtml, serializeForScript, clampPercent } from '../src/dashboard/htmlEscape';
 import {
   getContextTabContentHtml,
   getWebviewContent,
@@ -51,6 +51,14 @@ describe('Sanitización y Escapado Anti-XSS (htmlEscape)', () => {
     assert.strictEqual(serializeForScript(undefined), 'undefined');
     assert.strictEqual(serializeForScript(100), '100');
     assert.strictEqual(serializeForScript(false), 'false');
+  });
+
+  it('clampPercent acota y redondea valores de porcentaje', () => {
+    assert.strictEqual(clampPercent(NaN), 0);
+    assert.strictEqual(clampPercent(150), 100);
+    assert.strictEqual(clampPercent(-5), 0);
+    assert.strictEqual(clampPercent('42'), 42);
+    assert.strictEqual(clampPercent(null), 0);
   });
 });
 

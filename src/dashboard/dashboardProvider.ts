@@ -18,7 +18,7 @@ import type { TokenAuditSnapshot } from '../phase2/tokenAuditor';
 import type { QuotaHistoryManager } from '../historyManager';
 import type { CalibrationManager, CalibrationPoolStatus } from '../phase2/calibrationManager';
 import type { PanelRenderData } from '../context/panelHtml';
-import { getContextTabContentHtml } from '../context/panelHtml';
+import { getContextTabContentHtml, CONTEXT_TAB_CSS, CONTEXT_TAB_JS } from '../context/panelHtml';
 import { t, getLanguage } from '../i18n';
 import { logger } from '../logger';
 import { escapeHtml, serializeForScript } from './htmlEscape';
@@ -1099,6 +1099,7 @@ function buildHtml(
     .main-tab-content.is-hidden {
       display: none !important;
     }
+    ${CONTEXT_TAB_CSS}
   </style>
 </head>
 <body class="${isSidebar ? 'is-sidebar' : ''}">
@@ -1166,6 +1167,7 @@ function buildHtml(
   <script>
     const vscode = acquireVsCodeApi();
     function sendMsg(command) { vscode.postMessage({ command }); }
+    ${CONTEXT_TAB_JS}
 
     function switchMainTab(tab) {
       try {
